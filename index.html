@@ -47,7 +47,7 @@ textarea.fi{resize:vertical;min-height:72px}
 .help-dot{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;min-width:22px;border-radius:50%;border:1px solid var(--bd);background:#f7f7f4;color:var(--sub);font-size:12px;font-weight:800;cursor:pointer;margin-left:6px;vertical-align:middle}
 .help-dot[aria-expanded="true"]{background:var(--acc);border-color:var(--acc);color:#fff}
 .help-line{font-size:12px;color:var(--sub);line-height:1.45;margin:6px 0 10px;background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:8px 10px;overflow-wrap:anywhere}
-.hero .help-dot{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.35);color:#fff}
+.hero .help-dot{width:18px;height:18px;min-width:18px;font-size:10px;margin-left:4px;background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.35);color:#fff;vertical-align:-2px}
 .hero .help-line{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25);color:#eee;margin:5px 0 0}
 .form-grid.align-controls .form-field{display:grid;grid-template-rows:subgrid;grid-row:span 3}
 .body-form .form-field{display:flex;flex-direction:column}
@@ -121,7 +121,7 @@ textarea.fi{resize:vertical;min-height:72px}
 #tf{position:fixed;top:0;left:50%;transform:translateX(-50%) translateY(-100%);width:100%;max-width:430px;background:var(--acc);color:#fff;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;display:flex;align-items:center;gap:12px;z-index:1200;transition:.3s;box-shadow:0 8px 20px rgba(0,0,0,.18)}
 #tf.on{transform:translateX(-50%) translateY(0)}
 #tf-v{font-size:22px;font-weight:700;font-family:monospace;min-width:60px}
-#tf-n{flex:1;font-size:13px;color:#ddd;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+#tf-n{flex:1;font-size:12px;color:#ddd;overflow:visible;white-space:normal;overflow-wrap:anywhere;line-height:1.25;max-height:2.6em}
 #tf-pb{background:rgba(255,255,255,.2);border-radius:4px;height:4px;flex:1;overflow:hidden}
 #tf-pf{height:4px;background:#fff;border-radius:4px;width:0;transition:.5s}
 #tf-btn{background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:var(--rad);padding:9px 14px;font-weight:700;cursor:pointer;font-size:13px;font-family:inherit}
@@ -174,7 +174,7 @@ textarea.fi{resize:vertical;min-height:72px}
 .mt2{font-size:18px;font-weight:800;margin-bottom:5px;line-height:1.25}
 .ms{font-size:13px;color:var(--sub);margin-bottom:16px;line-height:1.45}
 /* Toast */
-#toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%) translateY(14px);background:var(--acc);color:#fff;padding:11px 18px;border-radius:999px;font-size:13px;font-weight:650;z-index:1100;opacity:0;transition:.25s;pointer-events:none;max-width:92%;text-align:center;line-height:1.35;overflow-wrap:anywhere}
+#toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%) translateY(14px);background:var(--acc);color:#fff;padding:12px 16px;border-radius:18px;font-size:13px;font-weight:650;z-index:1100;opacity:0;transition:.25s;pointer-events:none;width:max-content;max-width:min(92vw,390px);text-align:center;line-height:1.42;white-space:normal;overflow-wrap:anywhere;box-shadow:0 8px 22px rgba(0,0,0,.18)}
 #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 body:has(#ob:not(.gone)) #toast{background:#fff;color:#111;border:1px solid rgba(0,0,0,.16);box-shadow:0 8px 30px rgba(0,0,0,.28)}
 /* Onboarding */
@@ -272,9 +272,15 @@ body:has(#ob:not(.gone)) #toast{background:#fff;color:#111;border:1px solid rgba
 .rev-ex:last-child{border-bottom:none}
 .rev-presc{font-size:13px;font-weight:700;color:var(--sub);text-align:right;max-width:120px;white-space:normal;overflow-wrap:anywhere;line-height:1.25;flex-shrink:0}
 /* Splash */
-#splash{position:fixed;inset:0;background:var(--acc);z-index:900;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;max-width:430px;margin:0 auto;transition:opacity .5s}
+#splash{position:fixed;inset:0;background:var(--acc);z-index:900;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px;max-width:430px;margin:0 auto;transition:opacity .5s}
 #splash.hide{opacity:0;pointer-events:none}
 #splash.gone{display:none}
+.sp-card{width:100%;max-width:340px;text-align:left}
+.sp-mark{width:46px;height:46px;border-radius:14px;background:#fff;color:var(--acc);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px;margin-bottom:18px}
+.sp-title{font-size:25px;font-weight:800;color:#fff;margin-bottom:8px;line-height:1.15}
+.sp-line{font-size:14px;color:#ddd;margin-bottom:8px;line-height:1.45}
+.sp-sub{font-size:12px;color:#999;line-height:1.5;margin-bottom:16px}
+.sp-action{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:10px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:#fff;color:var(--acc);font-size:13px;font-weight:800}
 /* Confirm */
 .conf-ov{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:950;display:flex;align-items:center;justify-content:center;padding:20px}
 .conf-box{background:#fff;border-radius:12px;padding:24px;max-width:320px;width:100%;text-align:center}
@@ -310,10 +316,13 @@ body:has(#ob:not(.gone)) #toast{background:#fff;color:#111;border:1px solid rgba
 
 <!-- SPLASH -->
 <div id="splash" class="gone">
-  <div style="font-size:52px;margin-bottom:16px">💪</div>
-  <div id="sp-s" style="font-size:26px;font-weight:700;color:#fff;margin-bottom:8px"></div>
-  <div id="sp-t" style="font-size:15px;color:#aaa;margin-bottom:8px;text-align:center"></div>
-  <div id="sp-u" style="font-size:13px;color:#666;text-align:center"></div>
+  <div class="sp-card">
+    <div class="sp-mark">CF</div>
+    <div id="sp-s" class="sp-title"></div>
+    <div id="sp-t" class="sp-line"></div>
+    <div id="sp-u" class="sp-sub"></div>
+    <button id="sp-a" class="sp-action" type="button">Abrir treino</button>
+  </div>
 </div>
 
 <!-- ONBOARDING -->
@@ -726,7 +735,7 @@ const LIMITACOES_GRUPOS={
   'Parte superior':[['cervical','Pescoço/cervical'],['ombro','Ombro'],['cotovelo','Cotovelo'],['punho','Punho/mão']],
   'Tronco':[['toracica','Coluna torácica'],['lombar','Lombar']],
   'Parte inferior':[['quadril','Quadril'],['adutores','Virilha/adutores'],['quadriceps','Quadríceps'],['posterior_coxa','Posterior da coxa'],['joelho','Joelho'],['panturrilha_aquiles','Panturrilha/Aquiles'],['tornozelo','Tornozelo'],['pe','Pé/calcanhar'],['fascite_plantar','Fascite plantar']],
-  'Condições gerais':[['instabilidade','Equilíbrio/instabilidade'],['recuperacao_lesao','Cirurgia ou lesão em recuperação'],['outra','Outra limitação'],['nenhuma','Nenhuma']]
+  'Condições gerais':[['nenhuma','Nenhuma dor / sem limitação atual'],['instabilidade','Equilíbrio/instabilidade'],['recuperacao_lesao','Cirurgia ou lesão em recuperação'],['outra','Outra limitação']]
 };
 function normalizarEquipamentoNome(v){
   const direto=EQUIP_ALIAS[v]||v;
@@ -2542,8 +2551,13 @@ function formatarRegioesDor(regioes=[]){
   const partes=arr.map(artigo);
   return partes.length===1?partes[0]:partes.slice(0,-1).join(', ')+' e '+partes.at(-1);
 }
+function rotuloRegiaoDorCurto(regiao){
+  const n=normTxt(regiao).trim();
+  const mapa={pe:'pé',toracica:'torácica',quadriceps:'quadríceps',biceps:'bíceps',triceps:'tríceps',trapezio:'trapézio',antebraco:'antebraço'};
+  return mapa[n]||String(regiao||'').trim();
+}
 function regioesTextoCurto(regioes=[]){
-  return fraseListaHumana([...(regioes||[])].filter(Boolean).map(r=>r==='toracica'?'torácica':r));
+  return fraseListaHumana([...(regioes||[])].filter(Boolean).map(rotuloRegiaoDorCurto));
 }
 function fraseListaHumana(itens=[]){
   const arr=[...new Set((itens||[]).map(v=>String(v||'').trim()).filter(Boolean))];
@@ -3550,6 +3564,7 @@ const STORAGE_KEY='cf8';
 let _avisoFalhaSalvar=false;
 let _avisoUsoStorage=false;
 const _acoesCriticas=new Set();
+let _toastTimer=null;
 
 function arr(v){
   return Array.isArray(v)?v:[];
@@ -3972,6 +3987,25 @@ function regioesDorRegistro(){
 function optionsRegiaoDorHtml(valor=''){
   return regioesDorRegistro().map(([v,l])=>`<option value="${escHtml(v)}"${valor===v?' selected':''}>${escHtml(l)}</option>`).join('');
 }
+function normalizarDorFormulario(dor='',dorRegiao=''){
+  let d=String(dor||'').trim();
+  let r=String(dorRegiao||'').trim();
+  if((!d||d==='nao')&&!r) return{dor:d,dorRegiao:''};
+  if(r&&(!d||d==='nao')) d='leve';
+  if(!r&&d==='nao') return{dor:'nao',dorRegiao:''};
+  if(!r&&!d) return{dor:'',dorRegiao:''};
+  return{dor:d,dorRegiao:r};
+}
+function ligarDorRegiaoExclusiva(dorId,regiaoId){
+  const dorEl=$(dorId),regEl=$(regiaoId);
+  if(!dorEl||!regEl) return;
+  dorEl.addEventListener('change',()=>{
+    if(!dorEl.value||dorEl.value==='nao') regEl.value='';
+  });
+  regEl.addEventListener('change',()=>{
+    if(regEl.value&&(!dorEl.value||dorEl.value==='nao')) dorEl.value='leve';
+  });
+}
 function labelsCheckinTesteCalifit(){
   return{
     status:[
@@ -4021,7 +4055,9 @@ const MAPA_CAMPOS_PERFIL={
 function showToast(msg,dur=2500){
   const t=$('toast');if(!t)return;
   t.textContent=msg;t.classList.add('on');
-  setTimeout(()=>t.classList.remove('on'),dur);
+  if(_toastTimer) clearTimeout(_toastTimer);
+  const tempo=Math.max(dur,Math.min(8000,1800+String(msg||'').length*45));
+  _toastTimer=setTimeout(()=>{t.classList.remove('on');_toastTimer=null;},tempo);
 }
 function ajudaInlineHtml(id,texto){
   return `<button type="button" class="help-dot" data-help="${escHtml(id)}" aria-expanded="false" aria-label="Ver informação">i</button><div class="help-line" id="${escHtml(id)}" hidden>${escHtml(texto)}</div>`;
@@ -4162,6 +4198,7 @@ document.addEventListener('keydown',e=>{
 });
 
 function goTab(i){
+  document.querySelectorAll('.modal.on').forEach(m=>mClose(m.id));
   document.querySelectorAll('.sec').forEach((s,j)=>s.classList.toggle('on',j===i));
   document.querySelectorAll('.nb').forEach((b,j)=>{b.classList.toggle('on',j===i);});
   if(i===0) rHoje();
@@ -4185,10 +4222,17 @@ function mostrarSplash(){
   const sauda=h<12?'Bom dia':h<18?'Boa tarde':'Boa noite';
   const hoje=new Date().getDay();
   const dia=ST.plano?.dias[hoje];
+  const sem=getSem?.();
+  const temTreino=dia&&dia.tipo!=='descanso';
   const ult=ST.semanas.flatMap(s=>Object.values(s.registros||{})).filter(r=>r.tipo==='feito'&&r.treino).sort((a,b)=>new Date(b.data)-new Date(a.data))[0];
   $('sp-s').textContent=`${sauda}${ST.perfil.nome?', '+ST.perfil.nome:''}!`;
-  $('sp-t').textContent=dia?`Hoje: ${dia.nome}`:'Hoje: Descanso';
-  $('sp-u').textContent=ult?`Último: ${ult.treino.nome} — ${new Date(ult.data).toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'})}`:' ';
+  $('sp-t').textContent=temTreino?`Hoje tem ${dia.nome||tipoLabel(dia.tipo)}.`:'Hoje é dia de descanso ou atividade leve.';
+  $('sp-u').textContent=`${sem?`Semana ${sem.num||'atual'} ${sem.aberta===false?'fechada':'aberta'}.`:''}${ult?` Último treino: ${ult.treino.nome} (${new Date(ult.data).toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'})}).`:''}`.trim();
+  const acao=$('sp-a');
+  if(acao){
+    acao.textContent=temTreino?'Ver treino de hoje':'Ver semana';
+    acao.onclick=()=>{const sp=$('splash');sp?.classList.add('hide');setTimeout(()=>sp?.classList.add('gone'),250);goTab(temTreino?0:1);};
+  }
   const sp=$('splash');
   sp.classList.remove('gone');
   setTimeout(()=>sp.classList.add('hide'),2500);
@@ -4835,7 +4879,7 @@ function atualizarAlertaDoresOnboarding(){
   const texto=[$('ob-dores')?.value||'',$('ob-ctx')?.value||''].filter(Boolean).join(' ');
   const regioes=analisarDorTexto(texto,{campoDor:true}).regioes||[];
   const fixas=new Set(normalizarLimitacoes(getObVals('ob-lims')).map(v=>({
-    posterior_coxa:'posterior de coxa',quadriceps:'quadríceps',toracica:'toracica',pe:'pe'
+    posterior_coxa:'posterior de coxa',quadriceps:'quadríceps',toracica:'torácica',pe:'pé'
   }[v]||v)));
   const divergentes=regioes.filter(r=>!fixas.has(r));
   if($('ob-dores-alerta')) $('ob-dores-alerta').style.display=divergentes.length?'block':'none';
@@ -6200,6 +6244,7 @@ function abrirRegistroExercicio(ex){
   <button class="btn" id="rd-save">Salvar registro</button><button class="btn btn-s" id="rd-cancel">Cancelar</button>`;
   mOpen('m1',h);
   ligarAjudasInline($('m1c'));
+  ligarDorRegiaoExclusiva('rd-dor','rd-dor-regiao');
   let feito=log.feito||'';
   const rpeInicial=String(log.rpe||'');
   let rpeAlterado=false;
@@ -6212,8 +6257,9 @@ function abrirRegistroExercicio(ex){
   $('rd-save').addEventListener('click',()=>{
     const series=log.series.map((_,i)=>({reps:$('rd-reps-'+i)?.value||''})).filter(s=>String(s.reps).trim());
     const obs=$('rd-obs')?.value||'';
-    const dor=$('rd-dor')?.value||'';
-    const dorRegiao=$('rd-dor-regiao')?.value||'';
+    const dorForm=normalizarDorFormulario($('rd-dor')?.value||'',$('rd-dor-regiao')?.value||'');
+    const dor=dorForm.dor;
+    const dorRegiao=dorForm.dorRegiao;
     const infoDor=analisarDorRegistro({dor,observacoes:[obs,dorRegiao].filter(Boolean).join(' ')});
     const rpeCampo=$('rd-rpe')?.value||'';
     if(rpeCampo&&!dificuldadePorRpe(rpeCampo)){showToast(`Informe ${rotuloRpeUsuario()} inteiro entre 6 e 10.`);return;}
@@ -6920,6 +6966,7 @@ function editarRegistroTreinoDia(diaIdx){
   const camposAlterados=exs.map(()=>({origem:''}));
   let cargaEdicaoConfirmada=false;
   exs.forEach((_,i)=>{
+    ligarDorRegiaoExclusiva('er-dor'+i,'er-dor-regiao'+i);
     $('er-diff'+i)?.addEventListener('change',e=>{
       camposAlterados[i].origem='diff';
       const sinc=sincronizarDificuldadeRpe({diff:e.target.value},'diff');
@@ -6970,9 +7017,10 @@ function editarRegistroTreinoDia(diaIdx){
       const reps=repsTxt.split('/').map(x=>x.trim()).filter(Boolean);
       const series=Number.isFinite(qtd)&&qtd>0?Array.from({length:qtd},(_,j)=>({reps:reps[j]||reps[0]||''})):Array.isArray(e.series)?e.series:[];
       e.series=series;
-      const dor=$('er-dor'+i)?.value||'';
+      const dorForm=normalizarDorFormulario($('er-dor'+i)?.value||'',$('er-dor-regiao'+i)?.value||'');
+      const dor=dorForm.dor;
       const obsEx=$('er-obs-ex'+i)?.value||'';
-      const dorRegiao=$('er-dor-regiao'+i)?.value||'';
+      const dorRegiao=dorForm.dorRegiao;
       const infoDor=analisarDorRegistro({dor,observacoes:[obsEx,dorRegiao].filter(Boolean).join(' ')});
       const rpe=$('er-rpe'+i)?.value||'';
       const tecnica=$('er-tec'+i)?.value||'';
@@ -7469,7 +7517,7 @@ function atualizarContextoTreinadorPorCheckin(checkin){
   const dificil=valorVazioUsuario(r.exercicioDificil)?'':(r.exercicioDificil||'').trim();
   const recuperacao=qualidadeLabel(r.recuperacao)||'não informada';
   const regDor=formatarRegioesDor(dorInfo.regioes);
-  const limitacoesPerfil=new Set(normalizarLimitacoes(ST.perfil?.limitacoes||[]).filter(v=>v!=='nenhuma').map(v=>({posterior_coxa:'posterior de coxa',quadriceps:'quadríceps',toracica:'toracica',pe:'pe',panturrilha_aquiles:'panturrilha'}[v]||v)));
+  const limitacoesPerfil=new Set(normalizarLimitacoes(ST.perfil?.limitacoes||[]).filter(v=>v!=='nenhuma').map(v=>({posterior_coxa:'posterior de coxa',quadriceps:'quadríceps',toracica:'torácica',pe:'pé',panturrilha_aquiles:'panturrilha'}[v]||v)));
   const negadasComLimitacao=(dorInfo.regioesNegadas||[]).filter(r=>limitacoesPerfil.has(r));
   const recomendacoes=[];
   if(dorInfo.alertaProfissional) recomendacoes.push('Interromper progressões do padrão dolorido e buscar avaliação profissional antes de insistir.');
@@ -7540,9 +7588,11 @@ function abrirCheckinSemanal(){
   <button class="btn btn-s" id="ci-cancel">Cancelar</button>`);
   $('ci-cancel').addEventListener('click',()=>mClose('m2'));
   const salvarCheckin=()=>{
+    const dorBruta=$('ci-dor')?.value.trim()||'';
+    const dorInfoCheckin=analisarDorTexto(dorBruta,{campoDor:true});
     const respostas={
       treinosCompletos:Math.min(feitos,plan),
-      dor:$('ci-dor')?.value.trim()||'',
+      dor:dorInfoCheckin.temDor?dorBruta:'',
       exercicioFacil:!podeAvaliarExercicios||valorVazioUsuario($('ci-facil')?.value)?'':($('ci-facil')?.value.trim()||''),
       exercicioDificil:!podeAvaliarExercicios||valorVazioUsuario($('ci-dificil')?.value)?'':($('ci-dificil')?.value.trim()||''),
       recuperacao:$('ci-rec')?.value||'',
@@ -8117,7 +8167,7 @@ function aplicarPreviaProximaSemana(btn){
   origem.planoAntesFechamento=cloneObj(prev.planoOrigem||ST.plano);
   origem.planoBaseAntesFechamento=cloneObj(prev.planoBaseOrigem||ST.planoBaseSemTempo||limparMetadadosTempoPlano(ST.plano));
   origem.planoBaseEstruturalAntesFechamento=cloneObj(prev.planoBaseEstruturalOrigem||ST.planoBaseEstrutural||separarPlanoBaseEstrutural(ST.planoBaseSemTempo||ST.plano));
-  if(prev.resumoAjustes?.length) origem.resumoIA=prev.resumoAjustes.join(' ');
+  if(prev.resumoAjustes?.length) origem.resumoIA=prev.resumoAjustes.join('\n');
   origem.aberta=false;
   origem.fechada=true;
   delete origem.previaPendente;
@@ -8423,11 +8473,25 @@ function fecharSemanaComConfirmacao(btn){
 function verResumoSem(id){
   const s=ST.semanas.find(x=>x.id===id);if(!s) return;
   const f=Object.values(s.registros||{}).filter(r=>r.tipo==='feito').length;
+  const resumoIA=resumoSemanaAnteriorHtml(s.resumoIA);
   mOpen('m2',`<div class="mt2">Semana ${s.num}</div><div class="ms">${fmtSem(s.inicio,s.fim)}</div>
   <div class="info ig">✅ ${f} treinos realizados</div>
-  ${s.resumoIA?`<div style="font-size:13px;color:#555;line-height:1.7;margin:12px 0">${escHtml(s.resumoIA)}</div>`:''}
+  ${resumoIA}
   <button class="btn btn-s" id="vrs-close">Fechar</button>`);
   $('vrs-close').addEventListener('click',()=>mClose('m2'));
+}
+function resumoSemanaAnteriorHtml(txt=''){
+  const partes=String(txt||'').split(/\n+/).flatMap(l=>l.split(/\. (?=[A-ZÁÉÍÓÚÂÊÔÃÕÇ])/).map((p,i,a)=>i<a.length-1?p+'.':p)).map(s=>s.trim()).filter(Boolean);
+  if(!partes.length) return '';
+  const grupos={diagnostico:[],cautelas:[],proxima:[]};
+  partes.forEach(p=>{
+    const n=normTxt(p);
+    if(/dor|cautela|reduz|evite|seguranca|segurança|sem progressao|sem progressão|conservador/.test(n)) grupos.cautelas.push(p);
+    else if(/proxima|próxima|manter|progred|ajuste|foco|semana/.test(n)) grupos.proxima.push(p);
+    else grupos.diagnostico.push(p);
+  });
+  const bloco=(titulo,itens)=>itens.length?`<div style="margin-top:8px"><strong>${titulo}</strong>${itens.map(p=>`<span style="display:block;margin-top:5px">• ${escHtml(p)}</span>`).join('')}</div>`:'';
+  return `<div class="info ib" style="text-align:left;margin:12px 0"><strong>Resumo da semana anterior</strong>${bloco('Diagnóstico',grupos.diagnostico)}${bloco('Cautelas',grupos.cautelas)}${bloco('Próxima semana',grupos.proxima)}</div>`;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -8760,10 +8824,14 @@ function rCorpo(){
   // Resumo corporal atual
   const ultimoPeso=registroPesoMaisRecente();
   const leituraAtual=b?leituraBioSeparada(p,b):null;
+  append(`<div class="bc" style="background:#111;color:#fff;border-color:#111;text-align:left">
+    <div class="bc-l" style="color:#bdbdbd">Peso mais recente</div>
+    <div class="bc-v" style="color:#fff">${validarPesoKg(p.peso).valido?`${p.peso} kg`:'Não informado'}</div>
+    <div class="bc-l" style="color:#cfcfcf">${ultimoPeso?`${escHtml(rotuloOrigemCorporal(ultimoPeso.origem)||ultimoPeso.origem)}${ultimoPeso.data?' · '+new Date(ultimoPeso.data).toLocaleDateString('pt-BR'):''}`:'Registre peso diário ou bioimpedância com peso.'}</div>
+  </div>`);
   append(`<div class="card">
-    <div class="h3">Resumo corporal atual</div>
-    <div class="info ib" style="margin-bottom:10px">Peso atual: <strong>${validarPesoKg(p.peso).valido?`${p.peso} kg`:'não informado'}</strong><br>Origem: ${ultimoPeso?`${escHtml(ultimoPeso.origem)}${ultimoPeso.data?' registrada em '+new Date(ultimoPeso.data).toLocaleDateString('pt-BR'):''}`:'origem não informada'}<br>Última atualização: ${ultimoPeso?.data?new Date(ultimoPeso.data).toLocaleDateString('pt-BR'):'não informada'}</div>
-    ${leituraAtual?`<div class="info igr">Leitura de composição: ${escHtml(leituraAtual.composicao)}<br><span style="font-size:12px">Base: última bioimpedância registrada.</span></div>`:''}
+    <div class="h3">Resumo corporal</div>
+    ${leituraAtual?`<div class="info igr">Composição corporal: ${escHtml(leituraAtual.composicao)}<br><span style="font-size:12px">Base: última bioimpedância registrada.</span></div>`:'<div class="info ib">Ainda sem leitura de bioimpedância. Registre uma medição quando tiver dados de balança ou aparelho.</div>'}
     <div class="form-grid body-form">
       <div><label class="fl">Altura (cm)</label><input type="number" class="fi" id="p-altura" value="${p.altura||''}" placeholder="—"></div>
     </div>
@@ -8783,7 +8851,7 @@ function rCorpo(){
   </div>`);
 
   append(`<div class="card">
-    <div class="h3">Metas corporais</div>
+    <div class="h3">Metas e tendência</div>
     <div class="form-grid align-controls">
       <div class="form-field"><label class="form-label">Meta de peso (kg)</label><input type="number" min="0" step="0.1" class="fi form-control" id="meta-peso" value="${p.metaPeso||''}" placeholder="Opcional"><div class="form-help"></div></div>
       <div class="form-field"><label class="form-label">Meta de gordura corporal (%)</label><input type="number" min="0" step="0.1" class="fi form-control" id="meta-gordura" value="${p.metaGordura||''}" placeholder="Opcional"><div class="form-help"></div></div>
@@ -8806,7 +8874,7 @@ function rCorpo(){
   }
 
   // Bio form
-  append(`<div class="card">
+  const bioFormHtml=`<div class="card">
     <div class="h3">${bioEdit?'Editar bioimpedância':'Bioimpedância — avançado'}</div>
     <div class="ms">Use quando tiver uma medição de balança ou aparelho. Para acompanhamento simples, registre apenas o peso diário.</div>
     <div class="info ib">Bioimpedância pode variar diariamente. Compare tendências em condições semelhantes, preferencialmente em intervalos semanais.</div>
@@ -8828,7 +8896,7 @@ function rCorpo(){
     </div>
     <div class="body-actions"><button class="btn" id="btn-reg-bio">${bioEdit?'Salvar alterações':'Registrar bioimpedância'}</button>
     ${bioEdit?'<button class="btn btn-s" id="btn-cancelar-bio">Cancelar edição</button>':''}</div>
-  </div>`);
+  </div>`;
 
   if(b){
     const invalidosBio=[
@@ -8852,7 +8920,7 @@ function rCorpo(){
     const topoStatus={l:leitura.composicao,c:leitura.composicaoCor||'var(--sub)',sub:'Leitura baseada nos dados registrados de peso, gordura corporal e massa muscular'};
     const pontuacao=pontuacaoCorporal(b,p);
     append(`<div class="bc" style="background:${topoStatus.c}22;border-color:${topoStatus.c}44"><div class="bc-v" style="color:${topoStatus.c}">${topoStatus.l}</div><div class="bc-l" style="color:${topoStatus.c}">${topoStatus.sub} · Bioimpedância como tendência — ${dataHoraBR(b.data)}</div></div>`);
-    append(`<div class="card"><div class="h3">Resumo corporal</div>
+    append(`<div class="card"><div class="h3">Composição corporal</div>
       <div class="ir2"><span>Pontuação corporal</span><span style="font-weight:700;text-align:right">${pontuacao||'—'}${pontuacao?'/100':''}<br><small style="color:var(--sub)">Base: combinação de gordura, hidratação, visceral e massa muscular informadas</small></span></div>
       <div class="ir2"><span>Peso/IMC</span><span style="font-weight:700;text-align:right">${leitura.pesoStatus.l}<br><small style="color:var(--sub)">Base: IMC adulto OMS/CDC${imc?` · IMC ${imc}`:''}</small></span></div>
       <div class="ir2"><span>Gordura corporal</span><span style="font-weight:700;text-align:right">${temGordura?cls.l:'Valor não informado'}<br><small style="color:var(--sub)">Base: referência geral por sexo</small></span></div>
@@ -8871,7 +8939,7 @@ function rCorpo(){
       <div class="sbox"><div class="sv">${b.aguaCorp||'—'}${b.aguaCorp?'%':''}${b.aguaCorp?trendT(b,b1,'aguaCorp',false):''}</div><div class="sl">Água</div></div>
       <div class="sbox"><div class="sv">${b.tmb||'—'}</div><div class="sl">TMB kcal</div></div>
     </div>`);
-    let indH=`<div class="card"><div class="h3">Indicadores</div>`;
+    let indH=`<div class="card"><div class="h3">Métricas</div>`;
     if(imc){const si=statusImc(imc);indH+=`<div class="ir2"><span>📊 IMC</span><span style="font-weight:700;text-align:right">${imc} <span style="font-size:11px;color:${si.c}">${si.l}</span><br><small style="color:var(--sub)">Base: IMC adulto OMS/CDC</small></span></div>`;}
     if(pi) indH+=`<div class="ir2"><span>⚖️ Peso de referência</span><span style="font-weight:700;text-align:right">${pi.min}–${pi.max}kg<br><small style="color:var(--sub)">Base: faixa de referência por IMC adulto</small></span></div>`;
     if(b.gordVisceral) indH+=`<div class="ir2"><span>🫀 Gordura visceral</span><span style="font-weight:700;text-align:right">${+b.gordVisceral<=9?'Dentro da faixa de referência':+b.gordVisceral<=14?'Atenção':'Acima da faixa de referência'}<br><small style="color:var(--sub)">Base: escala do aparelho; tendência</small></span></div>`;
@@ -8902,6 +8970,8 @@ function rCorpo(){
   } else {
     append(`<div class="empty"><div class="empty-i">📊</div><div class="empty-t">Nenhuma medição ainda</div><p style="font-size:13px">Registre sua bioimpedância semanalmente.</p></div>`);
   }
+
+  append(bioFormHtml);
 
   if(ST.bio.length){
     append(`<div class="card"><div class="h3">Últimas medições</div>${ST.bio.slice(0,8).map((x,i)=>`<div class="hr">
@@ -9477,11 +9547,12 @@ function classificarIntencaoTreinador(mensagem,estado=ST){
   add(ints,'bioimpedância/corpo',/bioimpedancia|bioimpedância|gordura|massa muscular|agua|água|visceral|imc|composicao|composição/.test(msg));
   add(ints,'peso',/\bpeso\b|emagrecer|engordar|secar/.test(msg));
   const falaAtividadeLeve=/atividade leve|caminhada leve|recuperacao ativa|recuperação ativa|mobilidade leve/.test(msg);
+  const falaTreinoPerdidoNatural=/treino perdido|perdi (?:o )?treino|perdi .*treino|perdeu treino|perder treino|pulei (?:o |dois |2 )?treinos?|faltei(?: ao)? treino|faltar treino|nao fiz (?:o )?treino|não fiz (?:o )?treino|nao treinei|não treinei|nao consegui (?:treinar|fazer (?:o )?treino)|não consegui (?:treinar|fazer (?:o )?treino)|preciso compensar|devo compensar|compensar\?/.test(msg);
   add(ints,'exercício fácil',(/facil|fácil|leve|sobrou|tranquilo/.test(msg))&&!falaAtividadeLeve);
-  add(ints,'exercício difícil',/dificil|difícil|pesado|duro|falhei|falha|nao consegui|não consegui|muito pesado/.test(msg));
+  add(ints,'exercício difícil',(/dificil|difícil|pesado|duro|falhei|falha|nao consegui|não consegui|muito pesado/.test(msg))&&!falaTreinoPerdidoNatural);
   add(ints,'trocar exercício',/trocar|substituir|alternativa|nao quero continuar|não quero continuar/.test(msg));
   add(ints,'regenerar plano',/regenerar|refazer plano|novo plano/.test(msg));
-  add(ints,'treino perdido',/treino perdido|perdi treino|perdeu treino|perder treino|faltei|faltar treino|nao fiz treino|não fiz treino/.test(msg));
+  add(ints,'treino perdido',falaTreinoPerdidoNatural);
   add(ints,'check-in',/check-?in|fechar semana/.test(msg));
   add(ints,'descanso/recuperação',/descanso|descansar|recuperar|recuperacao|recuperação|sono|energia|atividade leve|caminhada|mobilidade leve/.test(msg));
   add(ints,'atividade leve',falaAtividadeLeve);
@@ -9552,9 +9623,10 @@ function respostaTreinadorEstruturada(intencao,contexto,mensagem){
       tríceps:'Reduza empurradas que irritem cotovelo/braço; mantenha carga leve e sem dor.'
     };
     const regioesDor=[...new Set(arr(intencao.regioes).length?arr(intencao.regioes):[reg])].slice(0,2);
-    const alvoDor=fraseListaHumana(regioesDor);
+    const alvoDor=fraseListaHumana(regioesDor.map(rotuloRegiaoDorCurto));
     const acao=regioesDor.map(r=>mapa[r]||'Reduza amplitude/volume e troque por variação sem dor.').filter(Boolean).join(' ');
-    return `${base} Para dor em ${alvoDor}, não progrida agora. ${acao} ${intencao.dorForte?avaliar:'Registre intensidade, técnica e se a dor repetiu no próximo treino.'}`;
+    const avisoPeito=regioesDor.includes('peitoral')?' Se for pressão no peito, falta de ar, tontura, irradiação ou dor que não pareça muscular, pare e procure atendimento.':'';
+    return `${base} Para dor em ${alvoDor}, não progrida agora. ${acao}${avisoPeito} ${intencao.dorForte?avaliar:'Registre intensidade, técnica e se a dor repetiu no próximo treino.'}`;
   }
   if(intencao.principal==='exercício fácil'){
     if(dorAtiva) return `${base} O exercício pode ter ficado fácil, mas há dor/cautela registrada. Mantenha volume e variação atuais; progrida só se repetir sem dor e com técnica boa.`;
@@ -9823,7 +9895,7 @@ function instalarHooksTesteCalifit(){
     origem.planoAntesFechamento=cloneObj(prev.planoOrigem||ST.plano);
     origem.planoBaseAntesFechamento=cloneObj(prev.planoBaseOrigem||ST.planoBaseSemTempo||limparMetadadosTempoPlano(ST.plano));
     origem.planoBaseEstruturalAntesFechamento=cloneObj(prev.planoBaseEstruturalOrigem||ST.planoBaseEstrutural||separarPlanoBaseEstrutural(ST.planoBaseSemTempo||ST.plano));
-    if(prev.resumoAjustes?.length) origem.resumoIA=prev.resumoAjustes.join(' ');
+    if(prev.resumoAjustes?.length) origem.resumoIA=prev.resumoAjustes.join('\n');
     origem.aberta=false;
     origem.fechada=true;
     delete origem.previaPendente;
