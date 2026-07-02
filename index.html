@@ -3554,6 +3554,7 @@ function renderCronometroCircuito(container){
 // ESTADO
 // ═══════════════════════════════════════════════════════════
 const APP_SCHEMA_VERSION=17;
+const APP_RELEASE='67C';
 const DEF=()=>({
   schemaVersion:APP_SCHEMA_VERSION,
   perfil:{nome:'',genero:'M',peso:0,altura:0,idade:0,gordura:0,massaMuscular:0,nivel:'init',objetivos:[],focosComplementares:[],metaTecnica:'',equipamentos:[],cargasEquipamentos:{},limitacoes:[],detalhesLimitacoes:{},saude:{cirurgia:{tipo:'',data:'',regiao:'',status:'',liberacao:'',restricoes:'',movimentosEvitar:'',reavaliarEm:'',observacoes:'',atualizadoEm:''},condicoesGerais:'',orientacaoProfissional:''},ativExtras:[],diasTreino:[],tempoMaxTreino:0,metaPeso:0,metaGordura:0,historicoTreino:'',frequenciaRecente:'',tiposTreinoRecentes:[],contextoAtual:'',marcas:{flexoes:0,barras:0,dips:0,agachamentoUnilateral:0,prancha:0,lSit:0},doresAtuais:[],exerciciosEvitar:[],exerciciosPreferidos:[]},
@@ -9679,6 +9680,30 @@ function responderTreinadorLocal(mensagem, estado){
   return reduzirRespostaRepetidaTreinador(resposta,st);
 }
 
+let _avisoAtualizacaoPwa=false;
+function avisarAtualizacaoPwa(msg='Atualização instalada. Reabra o app para aplicar.'){
+  if(_avisoAtualizacaoPwa) return;
+  _avisoAtualizacaoPwa=true;
+  showToast(msg,7000);
+}
+function registrarServiceWorkerCalifit(){
+  if(!('serviceWorker' in navigator)) return;
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('./service-worker.js').then(reg=>{
+      if(reg.waiting) avisarAtualizacaoPwa('Atualização disponível. Feche e abra o app para aplicar.');
+      reg.addEventListener('updatefound',()=>{
+        const sw=reg.installing;
+        if(!sw) return;
+        sw.addEventListener('statechange',()=>{
+          if(sw.state==='installed'&&navigator.serviceWorker.controller){
+            avisarAtualizacaoPwa();
+          }
+        });
+      });
+    }).catch(()=>{});
+  });
+}
+
 async function sendChatMsg(msg){
   if(!msg.trim()) return;
   ST.chat.push({r:'user',c:msg,t:new Date().toISOString()});
@@ -10211,11 +10236,7 @@ function instalarHooksTesteCalifit(){
 instalarHooksTesteCalifit();
 if(!(typeof window!=='undefined'&&window.__CALIFIT_TEST_MODE__)){
   load();
-  if('serviceWorker' in navigator){
-    window.addEventListener('load',()=>{
-      navigator.serviceWorker.register('./service-worker.js').catch(()=>{});
-    });
-  }
+  registrarServiceWorkerCalifit();
 }
 </script>
 </body>
