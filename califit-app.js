@@ -14592,7 +14592,8 @@ function classificarIntencaoTreinador(mensagem,estado=ST){
   const falaAtividadeLeve=/atividade leve|caminhada leve|recuperacao ativa|recuperação ativa|mobilidade leve/.test(msg);
   const falaTreinoPerdidoNatural=!falaRetornoPausa&&/treino perdido|perdi (?:o )?treino|perdi .*treino|perdeu treino|perder treino|pulei (?:o |dois |2 )?treinos?|faltei(?: ao)? treino|faltar treino|nao fiz (?:o )?treino|não fiz (?:o )?treino|nao treinei|não treinei|nao consegui (?:treinar|fazer (?:o )?treino)|não consegui (?:treinar|fazer (?:o )?treino)|preciso compensar|devo compensar|compensar\?/.test(msg);
   const falaCansacoInformal=/nao aguentei|não aguentei|mto cansad|mt cansad|muito cansad|to cansad|tô cansad|tava cansad|exaust|sem energia|quebrad|acabou comigo|pegou pesado|pesado demais|morto de cansaco|morto de cansaço/.test(msg);
-  const falaCaminhoSkill=/skill tree|habilidade|progressao de habilidade|progressão de habilidade|evoluir para|caminho para|como chegar em|qual caminho|skill vem depois|como progredir|progredir na|progredir no/.test(msg);
+  const falaCaminhoSkill=/skill tree|habilidade|progressao de habilidade|progressão de habilidade|evoluir para|caminho para|como chegar em|qual caminho|skill vem depois|progredir na|progredir no/.test(msg);
+  const falaAjusteTreino=/como ajustar (?:o |meu )?treino|o que (?:eu )?devo mudar no treino|como progredir\??$|meu treino (?:esta|está) adequado|devo ajustar (?:o |meu )?treino|ajustar meu treino/.test(msg);
   const falaAlvoSkill=/barra fixa|pistol|hollow|l-?sit|paralelas/.test(msg)||(/flexao|flexão|prancha/.test(msg)&&falaCaminhoSkill);
   const falaSkillTree=falaCaminhoSkill||falaAlvoSkill;
   const falaTreinoDia=/\b(qual|que|como|tem|faco|faço|fazer)\b.{0,28}\btreino\b|\b(posso|devo)\b.{0,20}\b(treinar|fazer (?:o )?treino)\b.{0,20}\b(hoje|ontem|amanha|amanhã)\b|\btreino\b.{0,20}\b(hoje|ontem|amanha|amanhã)\b|\b(hoje|ontem|amanha|amanhã)\b.{0,20}\btreino\b|\b(treino de hoje|treino de ontem|treino de amanha|treino amanhã)\b/.test(msg);
@@ -14610,6 +14611,7 @@ function classificarIntencaoTreinador(mensagem,estado=ST){
   add(ints,'exercício fácil',(/facil|fácil|leve|sobrou|tranquilo/.test(msg))&&!falaAtividadeLeve);
   add(ints,'exercício difícil',((/dificil|difícil|pesado|duro|falhei|falha|nao consegui|não consegui|muito pesado/.test(msg)||falaCansacoInformal))&&!falaTreinoPerdidoNatural&&!falaRetornoPausa);
   add(ints,'skill tree',falaSkillTree);
+  add(ints,'ajuste contextual do treino',falaAjusteTreino);
   add(ints,'trocar exercício',!mudancaNivel.detectado&&trocaExercicio.detectado);
   add(ints,'regenerar plano',/regenerar|refazer plano|novo plano/.test(msg));
   add(ints,'atividade complementar',/atividade complementar|atividades complementares|pilates|yoga|corrida|caminhada|musculacao|musculação|natacao|natação|ciclismo|bike/.test(msg));
@@ -14626,7 +14628,7 @@ function classificarIntencaoTreinador(mensagem,estado=ST){
   add(ints,'agradecimento',agradecimentoPuro);
   add(ints,'confirmação',confirmacaoPura);
 
-  const prioridade=['dor','retorno após pausa','nível de experiência','dias consecutivos','esclarecer recomendação','skill tree','exercício difícil','exercício fácil','progressão','volume','trocar exercício','regenerar plano','atividade complementar','treino perdido','treino do dia','check-in','descanso/recuperação','atividade leve','bioimpedância/corpo','peso','histórico/últimos registros','equipamentos/carga','explicação do plano','saudação','agradecimento','confirmação'];
+  const prioridade=['dor','retorno após pausa','nível de experiência','dias consecutivos','esclarecer recomendação','ajuste contextual do treino','skill tree','exercício difícil','exercício fácil','progressão','volume','trocar exercício','regenerar plano','atividade complementar','treino perdido','treino do dia','check-in','descanso/recuperação','atividade leve','bioimpedância/corpo','peso','histórico/últimos registros','equipamentos/carga','explicação do plano','saudação','agradecimento','confirmação'];
   let principal=prioridade.find(t=>ints.includes(t))||'ajuda genérica';
   let herdada='';
   if(principal==='ajuda genérica'&&acompanhamentoCurto&&ctx.ultimaIntencao&&!['saudação','agradecimento','confirmação','ajuda genérica'].includes(ctx.ultimaIntencao)){
@@ -14670,7 +14672,8 @@ function resumoExerciciosRegistroAssistenteCalifit(registro={}){
     nome:ex?.nome||ex?.n||nomeTecnicoExercicio(ex)||'',
     status:ex?.log?.feito||ex?.feito||'',
     dificuldade:ex?.log?.diff||ex?.diff||'',
-    rpe:+ex?.log?.rpe||+ex?.rpe||0
+    rpe:+ex?.log?.rpe||+ex?.rpe||0,
+    tecnica:ex?.log?.tecnica||ex?.tecnica||''
   })).filter(x=>x.nome);
 }
 function contextoTreinadorResumido(estado=ST){
@@ -14734,6 +14737,8 @@ function contextoTreinadorResumido(estado=ST){
     cirurgiaAtiva:cirurgiaTemLimitacaoAtiva(p)||!!avisoSaudePlanoConsolidado(p),
     avisoSaude:avisoSaudePlanoConsolidado(p)||'',
     equipamentosPendentes:equipamentosCarregadosSemCarga(p).slice(0,4),
+    equipamentos:arr(p.equipamentos).filter(Boolean).slice(0,6),
+    tempoDisponivel:+p.tempoMaxTreino||hoje.tempoLimite||0,
     objetivo:arr(p.objetivos).map(v=>OBJL[v]||v).filter(Boolean).join(', ')||'saúde geral',
     nivel:p.nivel||'init',
     nivelExperiencia:{
@@ -14854,6 +14859,43 @@ function respostaTreinadorEstruturada(intencao,contexto,mensagem){
   if(intencao.principal==='saudação') return `${contexto.nome?`Olá, ${contexto.nome}`:'Olá'}! Posso ajudar com o treino de hoje, dor, recuperação, progressão ou alguma troca de exercício.`;
   if(intencao.principal==='agradecimento') return 'Por nada. Siga o plano sem forçar dor e registre como o treino realmente foi.';
   if(intencao.principal==='confirmação') return 'Certo. A orientação fica registrada no contexto desta conversa; quando houver uma nova dúvida, descreva o treino, a dor ou a recuperação.';
+  if(intencao.principal==='ajuste contextual do treino'){
+    const ultimo=contexto.ultimoTreino;
+    const exercicios=arr(ultimo?.exercicios);
+    const rpes=exercicios.map(ex=>+ex.rpe||0).filter(Boolean);
+    const rpe=rpes.length?Math.round(rpes.reduce((a,b)=>a+b,0)/rpes.length):0;
+    const tecnicas=exercicios.map(ex=>String(ex.tecnica||'').trim()).filter(Boolean);
+    const check=contexto.checkin||{};
+    const faltam=[];
+    if(!ultimo) faltam.push('um treino concluído com registro detalhado');
+    if(!rpe&&!check.rpe&&!check.esforco) faltam.push('esforço percebido/RPE');
+    if(!contexto.dores.length&&!contexto.dorSemana?.temDor&&!check.dor) faltam.push('confirmação de dor ou ausência de dor');
+    if(!tecnicas.length&&!check.tecnica) faltam.push('qualidade da técnica');
+    const equipamento=contexto.equipamentos.length?fraseListaHumana(contexto.equipamentos):'nenhum equipamento informado';
+    const treino=contexto.treinoHoje;
+    const situacao=[
+      `${base} Nível ${nivelLabel(contexto.nivel).toLowerCase()}, frequência recente ${contexto.frequenciaRecente?freqRecenteLabel(contexto.frequenciaRecente).toLowerCase():'não informada'} e ${contexto.tempoDisponivel?`${contexto.tempoDisponivel} min disponíveis`:'tempo não informado'}.`,
+      treino?`Hoje o plano indica ${treino.nome}${treino.tempoLimite?` em versão de ${treino.tempoLimite} min`:''}.`:'Não há treino ativo para hoje.',
+      `Equipamentos considerados: ${equipamento}.`,
+      ultimo?`Último treino registrado: ${ultimo.nome}${rpe?`, RPE médio ${rpe}`:''}${tecnicas.length?`, técnica ${fraseListaHumana(tecnicas)}`:''}.`:''
+    ].filter(Boolean).join(' ');
+    const manter=dorAtiva
+      ?'Mantenha apenas variações confortáveis, sem aumentar carga, volume ou amplitude no padrão afetado.'
+      :treino?'Mantenha a estrutura e os exercícios atuais enquanto a execução permanecer controlada; mude uma variável por vez.':'Mantenha a frequência compatível com sua recuperação até existir um treino ativo para avaliar.';
+    const ajustar=dorAtiva
+      ?`Suspenda progressões e reduza 10–20% do volume no padrão relacionado à dor ou limitação${contexto.avisoSaude?` (${contexto.avisoSaude})`:''}.`
+      :rpe>=9?'O esforço recente foi muito alto; reduza 10–20% do volume ou use uma variação mais simples na próxima sessão.'
+      :rpe&&rpe<=6&&confianca==='alta'?'Os registros mostram esforço controlado; considere apenas um pequeno aumento de repetições, tempo ou dificuldade.'
+      :'Não há evidência suficiente para uma mudança forte; complete o próximo treino e registre esforço, dor e técnica.';
+    const progredir=dorAtiva
+      ?'Progrida somente após sessões repetidas sem dor, com técnica estável e recuperação adequada.'
+      :`Progrida após pelo menos dois registros consistentes, completos, com técnica boa, recuperação adequada e sem dor; aumente somente uma variável por vez.`;
+    const seguranca=dorAtiva
+      ?`Alerta de segurança: existe dor, cirurgia ou limitação registrada. Não alterei o plano automaticamente. ${avaliar}`
+      :'Alerta de segurança: não alterei o plano automaticamente. Interrompa a progressão se surgir dor, perda de técnica ou recuperação ruim.';
+    const lacunas=faltam.length?` Dados que ainda faltam: ${fraseListaHumana(faltam)}.`:'';
+    return `Situação atual: ${situacao}${lacunas}\n\nO que manter: ${manter}\n\nO que ajustar: ${ajustar}\n\nQuando progredir: ${progredir}\n\n${seguranca}`;
+  }
   if(intencao.principal==='retorno após pausa'){
     const faixa=contexto.frequenciaRecente?freqRecenteLabel(contexto.frequenciaRecente):'frequência recente não informada';
     return `${base} Para voltar após uma pausa, não tente recuperar o tempo perdido de uma vez. Comece com volume moderado, deixe 1–2 repetições de reserva, mantenha técnica confortável e só aumente após dois bons registros sem dor. O perfil está como ${faixa.toLowerCase()}; atualize essa informação se a pausa ainda não estiver refletida no plano.`;
@@ -17726,7 +17768,10 @@ function aprimorarInterface167A(){
   }
   document.querySelectorAll('button').forEach(b=>{
     if(/Não consigo fazer/i.test(b.textContent||'')){b.textContent='Trocar exercício';b.title='Não consigo fazer este exercício';}
-    if(/Dispensar/i.test(b.textContent||'')&&!b.querySelector('[data-ico]')) b.insertAdjacentHTML('afterbegin',`${iconeCalifit('fechar')} `);
+    if(/Dispensar/i.test(b.textContent||'')&&!b.dataset.califitDismissIcon){
+      b.dataset.califitDismissIcon='1';
+      b.insertAdjacentHTML('afterbegin',`${iconeCalifit('fechar')} `);
+    }
   });
   atualizarTopOffsetCalifit();
 }
