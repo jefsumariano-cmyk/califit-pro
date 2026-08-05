@@ -1822,6 +1822,63 @@ body{
   }
 }
 
+/* 167D — contraste localizado dos accordions claros e cabeçalho uniforme */
+#hdr{justify-content:flex-start}
+
+.ui-disclosure,
+#trainer-base-assistente,
+.trainer-tools-disclosure,
+#trainer-manutencao{
+  border-color:#b9c0b9;
+}
+
+.ui-disclosure>summary,
+#trainer-base-assistente>.trainer-summary,
+.trainer-tools-disclosure>summary,
+#trainer-manutencao>.trainer-summary{
+  background:#fff;
+  color:#202420;
+  border-color:#b9c0b9;
+}
+
+.ui-disclosure[open]>summary,
+#trainer-base-assistente[open]>.trainer-summary,
+.trainer-tools-disclosure[open]>summary,
+#trainer-manutencao[open]>.trainer-summary{
+  background:#f1f3ef;
+  color:#181b18;
+  border-bottom-color:#aeb6ae;
+}
+
+.ui-disclosure>summary:after,
+#trainer-base-assistente>.trainer-summary:after,
+.trainer-tools-disclosure>summary:after,
+#trainer-manutencao>.trainer-summary:after{
+  color:#465048;
+}
+
+.ui-disclosure>summary .cf-ico,
+#trainer-base-assistente>.trainer-summary .cf-ico,
+.trainer-tools-disclosure>summary .cf-ico,
+#trainer-manutencao>.trainer-summary .cf-ico{
+  stroke:currentColor;
+}
+
+.ui-disclosure>summary:focus-visible,
+#trainer-base-assistente>.trainer-summary:focus-visible,
+.trainer-tools-disclosure>summary:focus-visible,
+#trainer-manutencao>.trainer-summary:focus-visible{
+  outline:3px solid #1769aa;
+  outline-offset:-3px;
+}
+
+.ui-disclosure[aria-disabled="true"]>summary,
+.ui-disclosure>summary[aria-disabled="true"]{
+  background:#ecefeb;
+  color:#505850;
+  cursor:not-allowed;
+}
+
 /* 164L1 — restaura a rolagem vertical após o splash */
 html,
 body{
@@ -2336,5 +2393,100 @@ body.califit-modal-open{
     inline-size:auto!important;
     min-inline-size:0!important;
     padding-inline:0!important;
+  }
+}
+
+/* 167D.1 — impedir zoom automático de foco no Safari/PWA iOS sem bloquear pinch zoom */
+@media (max-width:932px){
+  html.califit-ios-focus input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  html.califit-ios-focus textarea,
+  html.califit-ios-focus select,
+  html.califit-ios-focus [contenteditable="true"]{
+    min-width:0;
+    max-width:100%;
+    box-sizing:border-box;
+    font-size:16px;
+    line-height:1.4;
+  }
+}
+
+/* 167D.2 — cabeçalhos de consulta e rótulos semanais compactos */
+.modal{z-index:920}
+#m2:has(:is(#bib-root,#skill-root)){
+  align-items:flex-start;
+  padding-top:max(8px,env(safe-area-inset-top));
+  padding-right:max(0px,env(safe-area-inset-right));
+  padding-left:max(0px,env(safe-area-inset-left));
+}
+
+/* 167E — central compacta e ações do tutorial contextual */
+.assistant-help-center{padding:0;overflow:hidden}
+.assistant-help-center>.trainer-summary{padding:14px 16px}
+.assistant-help-center>.ms{margin:0;padding:0 16px 10px}
+.assistant-help-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:0 16px 16px}
+.assistant-help-grid button{min-width:0;min-height:44px;border:1px solid var(--bd);border-radius:var(--rad-md);background:var(--card);color:var(--tx);padding:9px 10px;font:var(--fw-extra) var(--type-small)/1.25 inherit;text-align:left;white-space:normal;overflow-wrap:normal;word-break:normal;cursor:pointer}
+.assistant-help-grid button:last-child:nth-child(odd){grid-column:1/-1}
+.assistant-answer-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.assistant-answer-actions .btn{flex:1 1 150px;min-width:0;min-height:44px;margin:0;white-space:normal;line-height:1.25}
+@media(max-width:350px){.assistant-help-grid{grid-template-columns:minmax(0,1fr)}.assistant-help-grid button:last-child:nth-child(odd){grid-column:auto}}
+#m2:has(:is(#bib-root,#skill-root)) .modal-b{
+  width:min(100%,430px);
+  max-width:430px;
+  max-height:calc(100dvh - max(8px,env(safe-area-inset-top)));
+  padding-top:14px;
+  box-sizing:border-box;
+  scroll-padding-top:14px;
+}
+#m2 :is(#bib-root,#skill-root){
+  min-width:0;
+  max-width:100%;
+  box-sizing:border-box;
+}
+#m2 :is(#bib-root,#skill-root)>.mt2{
+  min-width:0;
+  max-width:100%;
+  overflow-wrap:normal;
+  word-break:normal;
+}
+.week-overview-identity{min-width:0}
+.week-number-label{
+  display:inline-block;
+  min-width:max-content;
+  font-size:16px;
+  font-weight:700;
+  white-space:nowrap;
+}
+.week-overview-labels{
+  display:flex;
+  min-width:0;
+  gap:6px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+.week-status-label,
+.week-cycle-label{
+  display:inline-flex;
+  flex:0 0 auto;
+  align-items:center;
+  min-width:max-content;
+  padding:3px 10px;
+  border-radius:var(--rad-lg);
+  font-size:var(--type-caption);
+  font-weight:700;
+  white-space:nowrap;
+}
+@media(max-width:430px){
+  #m2:has(:is(#bib-root,#skill-root)) .modal-b{
+    min-height:calc(100dvh - max(8px,env(safe-area-inset-top)));
+    border-radius:0;
+    padding-left:14px;
+    padding-right:14px;
+  }
+}
+@media(orientation:landscape) and (max-height:500px){
+  #m2:has(:is(#bib-root,#skill-root)) .modal-b{
+    min-height:0;
+    max-height:calc(100dvh - max(8px,env(safe-area-inset-top)));
+    border-radius:0;
   }
 }

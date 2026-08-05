@@ -3,6 +3,10 @@
 window.__CALIFIT_APP_READY__=false;
 window.__CALIFIT_BOOT_STARTED_AT__=(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
 
+// 167D.1: identifica somente iOS/iPadOS para evitar o zoom automático de campos abaixo de 16 px.
+const CALIFIT_IOS_FOCUS=/iP(?:ad|hone|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+document.documentElement.classList.toggle('califit-ios-focus',CALIFIT_IOS_FOCUS);
+
 function mostrarFalhaCarregamentoCalifit(){
   if(window.__CALIFIT_TEST_MODE__||document.getElementById('califit-startup-fallback')) return;
   const box=document.createElement('div');
@@ -5324,6 +5328,13 @@ function mOpen(id,html){
   if(m){
     _modalFocusStack.push({id,el:document.activeElement});
     m.classList.add('on');
+    // A rolagem só pode ser normalizada de forma confiável depois que o painel volta ao layout.
+    if(c){
+      const caixa=c.closest('.modal-b')||c;
+      caixa.scrollTop=0;
+      caixa.scrollLeft=0;
+      requestAnimationFrame(()=>{caixa.scrollTop=0;caixa.scrollLeft=0;});
+    }
     atualizarBloqueioRolagemModalCalifit();
     setTimeout(()=>focarModal(id),30);
   }
@@ -5462,8 +5473,8 @@ function goTab(i){
 document.querySelectorAll('.nb').forEach(b=>b.addEventListener('click',()=>goTab(+b.dataset.tab)));
 
 function updHdr(){
-  const str=calcStreak();
-  $('hdr-r').textContent=str>1?`🔥 ${str}`:'';
+  // 167D: a sequência continua disponível nos dados e relatórios, sem exibição no cabeçalho.
+  $('hdr-r')?.remove();
 }
 function fmt(s){return s>=60?`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`:s+'s';}
 
@@ -10946,8 +10957,8 @@ function rSemana(){
 
   const card=document.createElement('div');card.className='card week-overview-card';
   card.innerHTML=`<div class="week-overview-head">
-    <div><div style="font-size:16px;font-weight:700">Semana ${sem.num}</div><div class="week-date-range">${fmtSem(sem.inicio,sem.fim)}</div></div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><span style="font-size:var(--type-caption);padding:3px 10px;border-radius:var(--rad-lg);background:${statusBg};color:${statusCor};font-weight:700">Semana ${statusSemana}</span><span style="font-size:var(--type-caption);padding:3px 10px;border-radius:var(--rad-lg);background:#e8f4fd;color:var(--b);font-weight:700" title="${escHtml(cicloSemanaFoco(semNo))}">${escHtml(cicloSemanaLabel(semNo))}</span></div>
+    <div class="week-overview-identity"><div class="week-number-label">Semana ${sem.num}</div><div class="week-date-range">${fmtSem(sem.inicio,sem.fim)}</div></div>
+    <div class="week-overview-labels"><span class="week-status-label" style="background:${statusBg};color:${statusCor}">Semana ${statusSemana}</span><span class="week-cycle-label" style="background:#e8f4fd;color:var(--b)" title="${escHtml(cicloSemanaFoco(semNo))}">${escHtml(cicloSemanaLabel(semNo))}</span></div>
   </div>`;
   const grid=document.createElement('div');grid.className='wgrid';
   for(let d=0;d<7;d++){
@@ -13776,6 +13787,22 @@ function rTreinador(){
   const avisoPerfilAssist=avisoPerfilEstimadoHtml(ST.perfil);
   if(avisoPerfilAssist) el.insertAdjacentHTML('beforeend',avisoPerfilAssist);
 
+  const ajudaUso=document.createElement('details');
+  ajudaUso.className='card assistant-help-center';
+  ajudaUso.id='assistant-help-center';
+  ajudaUso.innerHTML=`<summary class="trainer-summary"><span class="trainer-summary-title">${tituloIcone('ajuda','Como usar o CaliFit Pro')}</span></summary>
+    <div class="ms">Ajuda curta baseada somente nas funções que existem no app.</div>
+    <div class="assistant-help-grid">
+      <button type="button" data-help-topic="Como usar o app?">Primeiros passos</button>
+      <button type="button" data-help-topic="Como registrar meu treino?">Treino e registros</button>
+      <button type="button" data-help-topic="Onde vejo meu histórico?">Semana e histórico</button>
+      <button type="button" data-help-topic="Como registrar bioimpedância?">Corpo</button>
+      <button type="button" data-help-topic="Como acessar a Biblioteca?">Biblioteca</button>
+      <button type="button" data-help-topic="Como abrir a Skill Tree?">Skill Tree</button>
+      <button type="button" data-help-topic="Como salvar meus dados?">Backup e restauração</button>
+    </div>`;
+  el.appendChild(ajudaUso);
+
   const limparEntradaUsuarioCurta=v=>String(v||'').trim().replace(/\s+/g,' ').replace(/[.!?…]+$/,'');
   const rotuloEvitarAssistente=v=>{const limpo=limparEntradaUsuarioCurta(v);return /abdomem|abdomen|abdômen|abdominal|core/i.test(limpo)?'abdômen/core':limpo;};
   const alertas=[];
@@ -13859,6 +13886,7 @@ function rTreinador(){
   if(cend) setTimeout(()=>cend.scrollIntoView(),80);
   $('chat-in').addEventListener('keydown',e=>{if(e.key==='Enter') sendChat();});
   $('btn-chat-send').addEventListener('click',sendChat);
+  ajudaUso.querySelectorAll('[data-help-topic]').forEach(btn=>btn.addEventListener('click',()=>sendChatMsg(btn.dataset.helpTopic||'')));
   $('btn-limpar-chat').addEventListener('click',()=>showConfirm('Limpar conversa?','Isso apaga apenas a conversa do Assistente neste dispositivo.',()=>{ST.chat=[];ST.contextoTreinador=Object.assign({},ST.contextoTreinador||{},{ultimaIntencao:'',ultimaMensagem:'',ultimaRespostaEm:'',ultimaReferenciaTemporal:'',ultimaRegioes:[],ultimaAcaoEstado:'',ultimaAcaoResultado:''});salvar();rTreinador();showToast('Conversa limpa');},'Limpar conversa'));
   el.insertAdjacentHTML('beforeend',htmlBaseAssistentePlano(ctreino,ultCheck,alertasVisiveis,recsVisiveis));
 
@@ -15118,8 +15146,10 @@ async function sendChatMsg(msg){
     if(end)cm.insertBefore(loading,end);
     end?.scrollIntoView();
   }
-  if(respostaAjudaUsoCalifit(msg)){
-    registrarRespostaChatAssistenteCalifit(respostaAjudaUsoCalifit(msg));
+  const tutorial=await resolverTutorialCalifit(msg);
+  if(tutorial){
+    registrarRespostaChatAssistenteCalifit(tutorial);
+    renderAcoesTutorialCalifit();
     return;
   }
   if(processarAcaoAssistenteEstadoCalifit(msg)) return;
@@ -17722,20 +17752,101 @@ if(typeof window!=='undefined'&&window.__CALIFIT_TEST_HOOKS__){
   });
 }
 
-// 167A · integração responsiva e ajuda local, sem alteração de schema/storage.
-function respostaAjudaUsoCalifit(texto=''){
-  const msg=normTxt(texto);
-  if(/(como|onde|quero|posso).*(salv|backup|export)|salvar meus dados/.test(msg)){
-    return 'O CaliFit salva automaticamente neste dispositivo. Para criar uma cópia, abra Assistente > Perfil & Plano e use Exportar backup. Para recuperar a cópia, use Restaurar/importar no mesmo painel. Limpar os dados do navegador ou desinstalar o app pode remover os dados locais quando não existe um backup.';
+// 167E · tutorial contextual inteiramente local e baseado em capacidades reais.
+const BASE_TUTORIAL_CALIFIT=Object.freeze([
+  {id:'biblioteca',existe:true,tela:'Hoje/Assistente',rx:/(biblioteca).*(onde|acess|abr|encontr)|(onde|como).*(biblioteca)/,titulo:'Para abrir a Biblioteca',passos:['Vá à aba Hoje ou Assistente.','Toque em Biblioteca de exercícios.','Use a busca ou os filtros para localizar o exercício.'],acoes:[['Abrir Biblioteca','biblioteca']]},
+  {id:'skill_tree',existe:true,tela:'Hoje/Assistente',rx:/(skill\s*tree).*(onde|acess|abr|us)|(onde|como).*(skill\s*tree)/,titulo:'Para abrir a Skill Tree',passos:['Vá à aba Hoje ou Assistente.','Toque em Skill Tree.','Escolha um filtro e abra uma trilha para ver a progressão.'],acoes:[['Abrir Skill Tree','skill_tree']]},
+  {id:'registrar_treino',existe:true,tela:'Hoje/Semana',rx:/(como|onde).*(registr).*(treino)|(registrar meu treino)/,titulo:'Para registrar um treino',passos:['Abra Hoje para o treino atual ou Semana para outro dia.','Abra o treino planejado.','Toque em Registrar treino.','Marque os exercícios e finalize o registro.'],acoes:[['Abrir treino de hoje','treino_hoje'],['Ir para Semana','semana']]},
+  {id:'editar_treino',existe:true,tela:'Semana',rx:/(como|onde).*(edit|reabr).*(treino|registro)|(treino concluido).*(edit)/,titulo:'Para editar um treino concluído',passos:['Abra a aba Semana.','Toque no dia que possui o registro.','Escolha Editar registro ou Reabrir treino.','Atualize e salve sem criar outro registro.'],acoes:[['Ver registros','historico']]},
+  {id:'trocar_exercicio',existe:true,tela:'Hoje',rx:/(como|onde).*(troc|substitu).*(exercicio)|nao consigo fazer/,titulo:'Para trocar um exercício',passos:['Abra o treino na aba Hoje.','No card do exercício, toque em Trocar exercício.','Informe o motivo e escolha um substituto compatível.','Confirme a troca para o treino atual.'],acoes:[['Abrir treino de hoje','treino_hoje']]},
+  {id:'timer',existe:true,tela:'Hoje',rx:/(como|onde).*(timer|cronometro)|(usar o timer)/,titulo:'Para usar o timer',passos:['Abra o treino na aba Hoje.','Use o controle de tempo no exercício.','Pause, retome ou feche no painel fixo do topo.'],acoes:[['Abrir treino de hoje','treino_hoje']]},
+  {id:'backup_exportar',existe:true,tela:'Assistente',rx:/(como|onde|quero|posso).*(salv|backup|export)|salvar meus dados/,titulo:'Para proteger seus dados',passos:['Abra Assistente.','Expanda Configurações e manutenção.','Em Backup, toque em Exportar backup.','Guarde o arquivo em local seguro.'],nota:'O CaliFit salva automaticamente neste dispositivo. Use Exportar backup: o arquivo criado é sua cópia de segurança; Restaurar/importar recupera essa cópia. Limpar os dados ou desinstalar sem backup pode eliminar o histórico local.',acoes:[['Abrir backup','backup']]},
+  {id:'backup_importar',existe:true,tela:'Assistente',rx:/(restaur|import).*(backup|dados)|backup.*(restaur|import)/,titulo:'Para restaurar um backup',passos:['Abra Assistente.','Expanda Configurações e manutenção.','Toque em Importar backup e selecione o arquivo.','Revise a confirmação antes de substituir os dados locais.'],acoes:[['Abrir backup/importação','backup']]},
+  {id:'historico',existe:true,tela:'Semana',rx:/(onde|como).*(historico|registros)|(ver meus registros)/,titulo:'Para ver seus registros',passos:['Abra a aba Semana.','Veja Feitos, Planejados e Perdidos.','Role até Histórico de treinos ou Semanas anteriores.','Toque em um item para ver detalhes.'],acoes:[['Abrir Histórico','historico']]},
+  {id:'bio',existe:true,tela:'Corpo',rx:/(como|onde).*(bioimpedancia)|(registrar bio)/,titulo:'Para registrar bioimpedância',passos:['Abra a aba Corpo.','Expanda Registrar bioimpedância.','Informe somente os valores disponíveis.','Salve para acompanhar a tendência.'],nota:'Esses dados organizam o acompanhamento e não formam diagnóstico.',acoes:[['Registrar bioimpedância','bio']]},
+  {id:'peso_altura',existe:true,tela:'Corpo',rx:/(como|onde).*(peso|altura).*(registr|alter)/,titulo:'Para registrar peso e altura',passos:['Abra a aba Corpo.','Expanda Registrar peso e altura.','Informe os valores e salve.'],acoes:[['Registrar peso e altura','peso']]},
+  {id:'offline',existe:true,tela:'App',rx:/(instal|offline|sem internet)/,titulo:'Para usar offline',passos:['Abra o app com internet ao menos uma vez.','Instale o PWA pelo navegador quando a opção estiver disponível.','Depois, reabra normalmente sem internet.'],nota:'Os dados continuam locais neste dispositivo.',acoes:[]},
+  {id:'criar_exercicio',existe:false,tela:'Biblioteca',rx:/(cri|adicion).*(exercicio).*(novo|proprio|personaliz)|(exercicio novo)/,titulo:'Exercício personalizado indisponível',limite:'Hoje o CaliFit Pro não permite criar um exercício personalizado.',alternativas:'Você pode trocar o exercício do plano, escolher um substituto, registrar uma atividade complementar ou buscar uma opção semelhante na Biblioteca.',acoes:[['Abrir Biblioteca','biblioteca'],['Abrir treino de hoje','treino_hoje']]},
+  {id:'editar_exercicio_nativo',existe:false,tela:'Biblioteca',rx:/(renome|edit|exclu|apag).*(exercicio).*(biblioteca|nativo)|(excluir um exercicio)/,titulo:'Edição da Biblioteca indisponível',limite:'Hoje o CaliFit Pro não permite renomear, editar ou excluir exercícios nativos da Biblioteca.',alternativas:'Você pode trocar um exercício no treino atual ou buscar uma alternativa existente.',acoes:[['Abrir Biblioteca','biblioteca'],['Abrir treino de hoje','treino_hoje']]}
+]);
+let _acoesTutorialCalifit=[];
+function textoTutorialCapacidadeCalifit(item){
+  if(!item.existe) return `${item.titulo}\n${item.limite}\n\nAlternativas reais: ${item.alternativas}`;
+  const passos=arr(item.passos).slice(0,5).map((p,i)=>`${i+1}. ${p}`).join('\n');
+  return `${item.titulo}:\n${passos}${item.nota?`\n\nImportante: ${item.nota}`:''}`;
+}
+function telaTutorialAtualCalifit(){
+  if(document.querySelector('#m2.on #bib-root'))return'biblioteca';
+  if(document.querySelector('#m2.on #skill-root'))return'skill tree';
+  return({s0:'hoje',s1:'semana',s2:'corpo',s3:'assistente'})[document.querySelector('.sec.on')?.id]||'app';
+}
+function respostaContextualTelaCalifit(){
+  const tela=telaTutorialAtualCalifit();
+  const mapa={
+    hoje:'Aqui em Hoje:\n1. Confira o treino ou descanso previsto.\n2. Abra o aquecimento e os exercícios.\n3. Use timers quando houver e registre a execução.\n4. Finalize o check-in sem duplicar registros.',
+    semana:'Aqui em Semana:\n1. Acompanhe Feitos, Planejados e Perdidos.\n2. Toque nos dias para abrir detalhes.\n3. Faça o check-in semanal.\n4. Revise a próxima semana antes de aplicar.',
+    corpo:'Aqui em Corpo:\n1. Registre peso e altura.\n2. Adicione bioimpedância quando tiver dados.\n3. Leia os indicadores como tendência, não diagnóstico.',
+    biblioteca:'Aqui na Biblioteca:\n1. Use a busca ou os filtros.\n2. Toque em Ver para execução, erros, cuidados e progressões.\n3. A consulta não altera seu plano.',
+    'skill tree':'Aqui na Skill Tree:\n1. Escolha o filtro.\n2. Abra uma trilha.\n3. Consulte evidências e próximos passos.\n4. A árvore não progride seu plano automaticamente.',
+    assistente:'Aqui no Assistente:\n1. Faça perguntas sobre treino ou uso do app.\n2. Use Como usar o CaliFit Pro para atalhos.\n3. Consulte o histórico da conversa.\n4. Abra ajustes, Biblioteca, Skill Tree ou backup quando precisar.'
+  };
+  return mapa[tela]||'Abra uma das abas principais para receber ajuda contextual sobre aquela tela.';
+}
+function roteiroInicialCalifit(){return `Primeiros passos no CaliFit Pro:\n1. Hoje — veja o treino e registre a execução.\n2. Semana — acompanhe planejados, feitos, perdidos e check-in.\n3. Corpo — registre peso, altura e bioimpedância.\n4. Assistente — tire dúvidas e receba orientação contextual.\n5. Biblioteca e Skill Tree — consulte execução e progressões.\n6. Backup — exporte seus dados periodicamente.`;}
+function perguntaExercicioTutorialCalifit(msg){return /(como\s+(fazer|executar)|tecnica|erros?\s+(a\s+)?evitar|cuidados?).*(flex|agach|remada|prancha|barra|exercicio)|^(como fazer|como executar)\s+/.test(msg);}
+async function resolverTutorialCalifit(texto=''){
+  const msg=normalizarLinguagemInformalAssistenteCalifit(texto).normalizado;
+  _acoesTutorialCalifit=[];
+  if(/^(o que (faco|faço) aqui|nao entendi (essa|esta) tela|estou perdido aqui)/.test(msg)){
+    _acoesTutorialCalifit=[['Ações principais','assistente']];return respostaContextualTelaCalifit();
   }
-  if(/(restaur|import).*(backup|dados)|backup.*(restaur|import)/.test(msg)) return 'Abra Assistente > Perfil & Plano e escolha Restaurar/importar. Confira o arquivo antes de confirmar: a importação substitui o estado local atual.';
-  if(/(instal|offline|sem internet)/.test(msg)) return 'O app funciona offline depois de carregado. Use a opção Instalar app do navegador quando ela estiver disponível; seus dados continuam locais neste dispositivo.';
-  if(/(cronometro|timer)/.test(msg)) return 'Use o cronômetro nos controles do exercício. Ele fica fixo no topo, permite pausar, zerar e fechar, e somente um cronômetro permanece ativo.';
-  if(/check.?in/.test(msg)) return 'O check-in fica no treino concluído e na Semana. Registre esforço, dificuldade e dor para melhorar a qualidade das recomendações.';
-  if(/(trocar|editar).*(exercicio)|nao consigo fazer/.test(msg)) return 'No card do exercício, use Trocar exercício. O app mostra substitutos compatíveis e só aplica a troca depois da sua confirmação.';
-  if(/(biblioteca|skill tree)/.test(msg)&&/(onde|encontr|abrir)/.test(msg)) return 'Biblioteca e Skill Tree ficam nos atalhos de consulta do app. Elas abrem sem alterar seu plano.';
-  if(/(privacidade|dados locais)/.test(msg)) return 'Seus dados ficam neste dispositivo e o Assistente funciona localmente. Exporte um backup antes de limpar dados ou desinstalar.';
+  if(/(como usar (o )?app|por onde (comeco|começo)|me (de|dê) um tutorial|ajuda inicial|primeiros passos)/.test(msg)){
+    _acoesTutorialCalifit=[['Abrir treino de hoje','treino_hoje'],['Abrir Semana','semana'],['Abrir Corpo','corpo'],['Abrir Biblioteca','biblioteca'],['Abrir Skill Tree','skill_tree'],['Abrir backup','backup']];return roteiroInicialCalifit();
+  }
+  if(perguntaExercicioTutorialCalifit(msg)){
+    try{await carregarModuloExplorarCalifit();}catch{}
+    const termo=msg.replace(/^(como\s+(fazer|executar)|qual\s+a\s+tecnica\s+(da|do)|quais\s+erros\s+evitar\s+(na|no))\s+/,'').replace(/[?!.]/g,'').trim();
+    const gerais=typeof filtrarExerciciosBibliotecaCalifit==='function'?filtrarExerciciosBibliotecaCalifit({busca:termo}):[];
+    const termoNome=normTxt(termo);
+    const porNome=gerais.filter(x=>normTxt([x.nome,x.nomeTecnico,...arr(x.aliases)].filter(Boolean).join(' ')).includes(termoNome));
+    const encontrados=(porNome.length?porNome:gerais).slice(0,3);
+    if(!encontrados.length){_acoesTutorialCalifit=[['Abrir Biblioteca','biblioteca']];return `Não encontrei "${termo}" com segurança na Biblioteca do CaliFit Pro. Tente outro nome ou busque uma opção semelhante; não vou inventar uma execução.`;}
+    if(encontrados.length>1){_acoesTutorialCalifit=encontrados.map(x=>[`Abrir ${x.nome||x.nomeTecnico}`,'buscar_exercicio',x.nomeTecnico||x.nome]);return `Encontrei mais de uma possibilidade:\n${encontrados.map((x,i)=>`${i+1}. ${x.nome||x.nomeTecnico}`).join('\n')}\n\nEscolha uma opção para abrir a orientação completa na Biblioteca.`;}
+    const item=detalheExercicioBibliotecaCalifit(encontrados[0].nomeTecnico||encontrados[0].nome);
+    _acoesTutorialCalifit=[['Abrir na Biblioteca','buscar_exercicio',encontrados[0].nomeTecnico||encontrados[0].nome]];
+    return `${item?.nome||encontrados[0].nome}: ${arr(item?.passos)[0]||item?.descricao||'A orientação completa está disponível na Biblioteca.'}${item?.erroComum?` Evite: ${item.erroComum}`:''}\n\nVeja passos, cuidados e progressões completos na Biblioteca.`;
+  }
+  const correspondencias=BASE_TUTORIAL_CALIFIT.filter(x=>x.rx.test(msg));
+  const item=correspondencias.find(x=>x.existe===false)||correspondencias.find(x=>x.id==='backup_importar')||correspondencias[0];
+  if(item){_acoesTutorialCalifit=arr(item.acoes);return textoTutorialCapacidadeCalifit(item);}
+  const perguntaUso=/(como|onde|posso|quero|nao encontrei|não encontrei|ajuda)/.test(msg)&&!/(dor|progred|progressao|progressão|ajustar meu treino|cansad|dificil|difícil|facil|fácil)/.test(msg);
+  if(perguntaUso){_acoesTutorialCalifit=[['Ajuda inicial','ajuda'],['Abrir Biblioteca','biblioteca'],['Abrir Skill Tree','skill_tree']];return 'Não encontrei uma orientação confiável para essa pergunta dentro do CaliFit Pro. Reformule a pergunta ou consulte a ajuda inicial e as ações principais.';}
   return '';
+}
+function respostaAjudaUsoCalifit(texto=''){
+  const msg=normalizarLinguagemInformalAssistenteCalifit(texto).normalizado;
+  const correspondencias=BASE_TUTORIAL_CALIFIT.filter(x=>x.rx.test(msg));
+  const item=correspondencias.find(x=>x.existe===false)||correspondencias.find(x=>x.id==='backup_importar')||correspondencias[0];
+  return item?textoTutorialCapacidadeCalifit(item):'';
+}
+function executarAcaoTutorialCalifit(tipo,valor=''){
+  if(tipo==='biblioteca'||tipo==='buscar_exercicio'){
+    abrirBibliotecaExercicios();
+    if(tipo==='buscar_exercicio')setTimeout(()=>{const q=$('bib-busca');if(q){q.value=valor;q.dispatchEvent(new Event('input',{bubbles:true}));q.focus();}},180);
+    return;
+  }
+  if(tipo==='skill_tree'){abrirSkillTreeCalifit();return;}
+  if(tipo==='hoje'||tipo==='treino_hoje'){goTab(0);if(tipo==='treino_hoje')setTimeout(()=>$('btn-ver-treino')?.click(),100);return;}
+  if(tipo==='semana'||tipo==='historico'){goTab(1);if(tipo==='historico')setTimeout(()=>document.querySelector('#s1 .history-card,.hist-o4-wrap')?.scrollIntoView({block:'start'}),120);return;}
+  if(tipo==='corpo'||tipo==='peso'||tipo==='bio'){goTab(2);setTimeout(()=>{const rx=tipo==='bio'?/Registrar bioimpedância/:/Registrar peso e altura/;const s=[...document.querySelectorAll('#s2 details>summary')].find(x=>rx.test(x.textContent||''));if(s){s.parentElement.open=true;s.scrollIntoView({block:'start'});}},120);return;}
+  if(tipo==='backup'){goTab(3);setTimeout(()=>{const d=$('trainer-manutencao');if(d){d.open=true;d.scrollIntoView({block:'start'});}},120);return;}
+  if(tipo==='ajuda'||tipo==='assistente'){goTab(3);setTimeout(()=>{const d=$('assistant-help-center');if(d){d.open=true;d.scrollIntoView({block:'start'});}},120);}
+}
+function renderAcoesTutorialCalifit(){
+  const box=$('chat-last-answer');if(!box||!_acoesTutorialCalifit.length)return;
+  const wrap=document.createElement('div');wrap.className='assistant-answer-actions';
+  _acoesTutorialCalifit.slice(0,6).forEach(([label,tipo,valor])=>{const b=document.createElement('button');b.type='button';b.className='btn btn-s btn-sm';b.textContent=label;b.addEventListener('click',()=>executarAcaoTutorialCalifit(tipo,valor));wrap.appendChild(b);});
+  box.appendChild(wrap);
 }
 function atualizarTopOffsetCalifit(){
   const raiz=document.documentElement,tf=$('tf'),hdr=$('hdr'),nav=$('nav');
