@@ -17701,7 +17701,6 @@ function atualizarTopOffsetCalifit(){
   const cabecalho=Math.ceil((hdr?.getBoundingClientRect().height||0)+(nav?.getBoundingClientRect().height||0));
   raiz.style.setProperty('--califit-timer-offset',`${timer}px`);
   raiz.style.setProperty('--califit-top-offset',`${timer+cabecalho}px`);
-  raiz.style.setProperty('--app-top-offset',`${timer+cabecalho}px`);
   document.body.classList.toggle('califit-timer-open',timer>0);
 }
 function limparConversaAssistenteCalifit(){
