@@ -2393,12 +2393,20 @@ function fraseExercicioMarcado(texto,tipo){
   const comArtigos=itens.map((x,i)=>`${i?artigoExercicio(x).toLowerCase():artigoExercicio(x)} ${nomeExercicioTexto(x,true)}`);
   return `${fraseListaHumana(comArtigos)} foram marcados como ${plural}.`;
 }
+function faseCicloCalifit(n=1){
+  const numero=Math.max(1,Math.min(4,+n||1));
+  return Object.freeze({
+    1:{tipo:'adaptacao',rotulo:'Semana de adaptação',descricao:'Entrada gradual para calibrar técnica, tolerância e recuperação.',foco:'Foco em técnica, consistência e tolerância ao treino.'},
+    2:{tipo:'volume',rotulo:'Semana de volume',descricao:'Acúmulo controlado de trabalho com execução consistente.',foco:'Foco em acumular volume com boa execução.'},
+    3:{tipo:'intensidade',rotulo:'Semana de intensidade',descricao:'Progressão conservadora da dificuldade, sem perder qualidade.',foco:'Foco em intensidade controlada e progressão conservadora.'},
+    4:{tipo:'recuperacao',rotulo:'Semana de recuperação',descricao:'Redução planejada da carga para diminuir fadiga e consolidar adaptação.',foco:'Foco em recuperação, técnica e redução de fadiga.'}
+  }[numero]);
+}
 function cicloSemanaLabel(n){
-  return {1:'Ciclo 1 de 4 · Semana de adaptação',2:'Ciclo 2 de 4 · Semana de volume',3:'Ciclo 3 de 4 · Semana de intensidade',4:'Ciclo 4 de 4 · Semana de recuperação'}[+n||1]||'Ciclo 1 de 4 · Semana de adaptação';
+  const numero=Math.max(1,Math.min(4,+n||1));
+  return `Ciclo ${numero} de 4 · ${faseCicloCalifit(numero).rotulo}`;
 }
-function cicloSemanaFoco(n){
-  return {1:'Foco em técnica, consistência e tolerância ao treino.',2:'Foco em acumular volume com boa execução.',3:'Foco em intensidade controlada e progressão conservadora.',4:'Foco em recuperação, técnica e redução de fadiga.'}[+n||1]||'Foco em técnica, consistência e tolerância ao treino.';
-}
+function cicloSemanaFoco(n){return faseCicloCalifit(n).foco;}
 function regraDificuldadeLog(log){
   const porRpe=dificuldadePorRpe(log?.rpe);
   if(porRpe) return MATRIZ_TECNICA.dificuldade[porRpe];
@@ -6966,7 +6974,50 @@ function qualidadeFeedbackTreino(registroTreino={}){
   const observacao=normTxt(logs.map(l=>[l.obs,l.observacoes,l.continuar].filter(Boolean).join(' ')).join(' '));
   const piora=/pior|piorou|agravou|insegur|formig|travou/.test(observacao);
   const ignorada=registroTreino.progressaoIgnorada||registroTreino.treino?.progressaoIgnorada;
-  return{checkin,completo,dorLeve,dorRelevante,pesado,execucoes,concluidos,parciais,naoFez,acimaSemFeedback,piora,ignorada};
+  const aquecimentoConcluido=!!(registroTreino.aquecimentoConcluido||registroTreino.treino?.aquecimentoConcluido);
+  const detalhados=logs.filter(l=>l.feito&&(
+    arr(l.series).length||l.reps||l.rpe||l.dor||l.tecnica||l.obs||l.observacoes
+  )).length;
+  const detalhesSuficientes=detalhados>=Math.max(1,Math.ceil(Math.max(logs.length,1)*.6));
+  return{checkin,completo,dorLeve,dorRelevante,pesado,execucoes,concluidos,parciais,naoFez,acimaSemFeedback,piora,ignorada,aquecimentoConcluido,detalhados,detalhesSuficientes,totalExercicios:logs.length};
+}
+function avaliarConfiancaFeedbackCalifit(registroTreino={},perfil=ST?.perfil||{}){
+  const q=qualidadeFeedbackTreino(registroTreino);
+  const positivos=[],ausentes=[],riscos=[];
+  if(q.detalhados)positivos.push(`${q.detalhados} exercício${q.detalhados===1?'':'s'} com registro detalhado`);
+  if(q.aquecimentoConcluido)positivos.push('aquecimento concluído');
+  if(q.completo)positivos.push('check-in geral completo');
+  if(q.execucoes)positivos.push('status dos exercícios registrado');
+  if(!q.completo){
+    if(!q.checkin.dor)ausentes.push('dor geral');
+    if(!q.checkin.dificuldade)ausentes.push('dificuldade global');
+    if(!q.checkin.esforco)ausentes.push('esforço global');
+    ausentes.push('check-in geral completo');
+  }
+  if(q.dorRelevante||q.piora)riscos.push('dor ou piora relevante');
+  if(cirurgiaTemLimitacaoAtiva(perfil))riscos.push('cirurgia/recuperação ativa');
+  if(q.parciais||q.naoFez)riscos.push('execução parcial ou não realizada');
+  if(q.pesado)riscos.push('esforço alto ou dificuldade elevada');
+  const bloqueada=!!(q.ignorada||q.dorRelevante||q.piora||cirurgiaTemLimitacaoAtiva(perfil));
+  let nivel='baixa';
+  if(!bloqueada&&!q.parciais&&!q.naoFez){
+    if(q.completo&&q.detalhesSuficientes)nivel='alta';
+    else if(q.detalhesSuficientes)nivel='média';
+    else if(q.completo&&q.execucoes)nivel='média';
+  }
+  const explicacao=nivel==='alta'
+    ?'Os registros por exercício e o check-in geral estão completos e consistentes.'
+    :nivel==='média'&&q.detalhesSuficientes&&!q.completo
+      ?'Os exercícios foram registrados, mas falta o check-in geral da sessão.'
+      :bloqueada
+        ?'Há informação de risco; as recomendações permanecem conservadoras.'
+        :'Ainda faltam registros detalhados e um check-in geral suficiente.';
+  return{nivel,bloqueada,positivos:[...new Set(positivos)],ausentes:[...new Set(ausentes)],riscos:[...new Set(riscos)],explicacao,qualidade:q};
+}
+function htmlConfiancaFeedbackCalifit(registroTreino={}){
+  const c=avaliarConfiancaFeedbackCalifit(registroTreino);
+  const lista=(titulo,itens)=>itens.length?`<div class="confidence-factor"><strong>${titulo}</strong><ul>${itens.map(x=>`<li>${escHtml(x)}</li>`).join('')}</ul></div>`:'';
+  return `<div class="confidence-explanation confidence-${escHtml(c.nivel)}"><div><strong>Confiança ${escHtml(c.nivel)}:</strong> ${escHtml(c.explicacao)}</div><details><summary>Por que esta confiança?</summary><div class="confidence-factors">${lista('Dados disponíveis',c.positivos)}${lista('Dados ausentes',c.ausentes)}${lista('Fatores de cautela',c.riscos)}</div></details></div>`;
 }
 function scoreConfiancaFeedback(registroTreino){
   const q=qualidadeFeedbackTreino(registroTreino);
@@ -6983,19 +7034,18 @@ function scoreConfiancaFeedback(registroTreino){
   return Math.max(0,Math.min(100,score));
 }
 function classificarConfiancaFeedback(registroTreino){
-  const q=qualidadeFeedbackTreino(registroTreino);
-  if(q.ignorada||q.dorRelevante||q.piora) return 'bloqueada';
+  const avaliacao=avaliarConfiancaFeedbackCalifit(registroTreino);
+  const q=avaliacao.qualidade;
+  if(avaliacao.bloqueada) return 'bloqueada';
   // Um exercício Parcial ou Não fiz pode ter feedback detalhado, mas não confirma
   // tolerância suficiente para liberar progressão automática.
   if(q.parciais||q.naoFez) return 'baixa';
-  const score=scoreConfiancaFeedback(registroTreino);
-  if(score>=80) return 'alta';
-  if(score>=55) return 'média';
-  return 'baixa';
+  return avaliacao.nivel;
 }
 function resumoConfiancaSemana(treinosSemana=[]){
   const treinos=arr(treinosSemana).filter(r=>r?.tipo==='feito'&&r.treino);
-  const classes=treinos.map(classificarConfiancaFeedback);
+  const avaliacoes=treinos.map(r=>avaliarConfiancaFeedbackCalifit(r));
+  const classes=avaliacoes.map(a=>a.bloqueada?'bloqueada':a.nivel);
   const contagem=classes.reduce((acc,c)=>{acc[c]=(acc[c]||0)+1;return acc;},{});
   const completos=treinos.filter(checkinMinimoCompleto).length;
   const qualidades=treinos.map(qualidadeFeedbackTreino);
@@ -7003,7 +7053,8 @@ function resumoConfiancaSemana(treinosSemana=[]){
   const bloqueados=contagem.bloqueada||0;
   const baixas=contagem.baixa||0;
   const altas=contagem.alta||0;
-  const classe=bloqueados?'bloqueada':(!treinos.length?'baixa':(altas===treinos.length?'alta':(baixas||completos<treinos.length?'baixa':'média')));
+  const medias=contagem['média']||0;
+  const classe=bloqueados?'bloqueada':(!treinos.length?'baixa':(altas===treinos.length?'alta':(medias||avaliacoes.some(a=>a.qualidade.detalhesSuficientes)?'média':'baixa')));
   const texto=classe==='alta'
     ?'Confiança do feedback: alta. Pode haver progressão leve se não houver dor.'
     :classe==='média'
@@ -7013,7 +7064,7 @@ function resumoConfiancaSemana(treinosSemana=[]){
         :execucaoIncompleta
           ?'Confiança do feedback: baixa. Execução parcial ou não realizada: sem progressão automática.'
           :'Confiança do feedback: baixa. Progressão conservadora por feedback incompleto.';
-  return{classe,contagem,total:treinos.length,completos,texto};
+  return{classe,contagem,total:treinos.length,completos,texto,fatores:avaliacoes};
 }
 function confiancaPreviaSemana(semana){
   const treinos=Object.values(semana?.registros||{}).filter(r=>r?.tipo==='feito'&&r.treino);
@@ -7701,8 +7752,10 @@ function appendExplorarHoje(container){
 }
 function rolarParaTreinoHoje(){
   const alvo=$('treino-hoje-card')||document.querySelector('.bloco');
-  alvo?.scrollIntoView?.({behavior:'smooth',block:'start'});
-  alvo?.focus?.();
+  if(!alvo)return;
+  alvo.tabIndex=-1;
+  alvo.scrollIntoView?.({behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?'auto':'smooth',block:'start'});
+  requestAnimationFrame(()=>alvo.focus?.({preventScroll:true}));
 }
 function renderizarLembretesHojeCalifit(container=null,agoraOpcional,opts={}){
   const alvo=container||$('s0');
@@ -9601,7 +9654,7 @@ function rHoje(){
   if(avisoPerfil) el.insertAdjacentHTML('beforeend',avisoPerfil);
   const avisoLim=avisoLimitacoesHtml(ST.perfil);
   if(avisoLim) el.insertAdjacentHTML('beforeend',avisoLim);
-  if(dia?.nota) el.insertAdjacentHTML('beforeend',`<div class="info io">${escHtml(dia.nota)}</div>`);
+  if(dia?.nota) el.insertAdjacentHTML('beforeend',`<div class="info io plan-reason">${htmlJustificativaPlanoCalifit(dia)}</div>`);
   if(treinosAnterioresSemRegistroSemana(sem).length) el.insertAdjacentHTML('beforeend',alertaInfoHtml('Registro pendente','Há treinos anteriores sem registro nesta semana. Revise pela aba Semana.','ib'));
   if(dia?.tipo==='recuperacao'){
     el.insertAdjacentHTML('beforeend',`<div class="card"><div class="h3">${tituloIcone('descanso','Sessão de recuperação')}</div><div class="info io">${escHtml(dia.nota||'Não liberado para treino. Siga as orientações da equipe profissional.')}</div></div>`);
@@ -9954,13 +10007,18 @@ function rHoje(){
   // Aquecimento
   if((dia.aq||[]).length){
     const aqFeito=!!ST.exec._aqFeito;
-    const bloco=document.createElement('div');bloco.className='bloco';bloco.style.cssText=aqFeito?'border:1.5px solid #a5d6a7;background:#f9fef9;border-radius:var(--rad-md);padding:10px':'border:1.5px solid var(--bd);border-radius:var(--rad-md);padding:10px';
-    const bh=document.createElement('div');bh.className='bloco-h';
-    bh.innerHTML=`<span class="bi">${iconeCalifit('flame')}</span><span class="bl">Aquecimento${aqFeito?' ✅':''}</span><span style="font-size:var(--type-small);color:${aqFeito?'var(--g)':'var(--o)'};margin-left:auto;font-weight:700">${aqFeito?'Aquecimento concluído':'Aquecimento pendente'}</span><span style="font-size:var(--type-small);color:var(--sub)" id="aq-toggle">${ST.exec._aq?'▲':'▼'} ${dia.aq.length} ex.</span>`;
+    const aqAndamento=!aqFeito&&!!ST.exec._aq;
+    const estadoAq=aqFeito?'concluido':aqAndamento?'andamento':'pendente';
+    const bloco=document.createElement('div');bloco.className=`bloco warmup-card warmup-${estadoAq}`;
+    const bh=document.createElement('button');bh.type='button';bh.className='bloco-h warmup-header';
+    bh.setAttribute('aria-expanded',String(!!ST.exec._aq));
+    bh.setAttribute('aria-controls','warmup-content');
+    bh.innerHTML=`<span class="warmup-title">${iconeCalifit('flame')}<strong>AQUECIMENTO</strong></span><span class="warmup-status">${aqFeito?'Concluído':aqAndamento?'Em andamento':'Pendente'}</span><span class="warmup-count">${dia.aq.length} exercício${dia.aq.length===1?'':'s'}</span><span class="warmup-chevron" aria-hidden="true">${ST.exec._aq?'▲':'▼'}</span>`;
     bh.addEventListener('click',()=>{ST.exec._aq=!ST.exec._aq;salvar();rHoje();});
     bloco.appendChild(bh);
     if(ST.exec._aq){
       const guia=document.createElement('div');
+      guia.id='warmup-content';
       guia.className='info igr';
       guia.style.cssText='margin:0 0 10px;padding:10px 12px';
       guia.innerHTML=`<strong>Aquecimento específico:</strong> ${escHtml(resumoAquecimentoTreino(dia))}<br><span style="font-size:var(--type-caption);color:var(--sub)">Use os cronômetros como guia e conclua as repetições sem pressa.</span>`;
@@ -10323,9 +10381,10 @@ function finalizarTreinoDia(diaIdx,opts={}){
   const criadoEm=registroExistente?.criadoEm||registroExistente?.treino?.criadoEm||lancadoEm.toISOString();
   const editadoEm=registroExistente?lancadoEm.toISOString():'';
   const metaEdicao=editadoEm?{editadoEm}:{};
-  const entry={data:lancadoEm.toISOString(),dataPlanejada:dataPlanejada.toISOString(),diaIdx:alvo,nome:dia.nome,tipo:dia.tipo,obs:ST.exec._obs||'',exercicios:exs,recomendacoes,resumo:resumoFinal,sugestoesProgressao:recomendacoes,registroSimples,dadosDetalhados,retroativo,notaRetroativa,checkinId,criadoEm,statusGeral,...metaEdicao,checkinMinimo,checkinMinimoCompleto:feedbackCompleto&&!semProgressao,progressaoIgnorada:semProgressao,motivoProgressaoIgnorada,...conclusaoTempo};
+  const aquecimentoConcluido=!!ST.exec._aqFeito;
+  const entry={data:lancadoEm.toISOString(),dataPlanejada:dataPlanejada.toISOString(),diaIdx:alvo,nome:dia.nome,tipo:dia.tipo,obs:ST.exec._obs||'',exercicios:exs,recomendacoes,resumo:resumoFinal,sugestoesProgressao:recomendacoes,registroSimples,dadosDetalhados,aquecimentoConcluido,retroativo,notaRetroativa,checkinId,criadoEm,statusGeral,...metaEdicao,checkinMinimo,checkinMinimoCompleto:feedbackCompleto&&!semProgressao,progressaoIgnorada:semProgressao,motivoProgressaoIgnorada,...conclusaoTempo};
   if(sem){
-    salvarRegistroTreinoUnicoDiaCalifit(sem,alvo,{tipo:'feito',data:registroExistente?.data||lancadoEm.toISOString(),diaIdx:alvo,dataPlanejada:dataPlanejada.toISOString(),retroativo,notaRetroativa,treino:entry,resumo:resumoFinal,sugestoesProgressao:recomendacoes,checkinId,criadoEm,statusGeral,...metaEdicao,checkinMinimo,checkinMinimoCompleto:feedbackCompleto&&!semProgressao,progressaoIgnorada:semProgressao,motivoProgressaoIgnorada,...conclusaoTempo});
+    salvarRegistroTreinoUnicoDiaCalifit(sem,alvo,{tipo:'feito',data:registroExistente?.data||lancadoEm.toISOString(),diaIdx:alvo,dataPlanejada:dataPlanejada.toISOString(),retroativo,notaRetroativa,treino:entry,resumo:resumoFinal,sugestoesProgressao:recomendacoes,checkinId,criadoEm,statusGeral,...metaEdicao,aquecimentoConcluido,checkinMinimo,checkinMinimoCompleto:feedbackCompleto&&!semProgressao,progressaoIgnorada:semProgressao,motivoProgressaoIgnorada,...conclusaoTempo});
     recalcularPreviaPendenteCalifit(sem,'registro de treino atualizado');
   }
   // A alternativa fica registrada no histórico, mas não contamina o plano dos próximos dias/semanas.
@@ -10355,7 +10414,7 @@ function renderTreinoConcluido(el,reg,diaIdx){
   ${reg.notaRetroativa||t.notaRetroativa?`<div class="info ib" style="text-align:left">${escHtml(reg.notaRetroativa||t.notaRetroativa)}</div>`:''}
   ${resumoConclusaoTempoCalifit(reg)?`<div class="info ib" style="text-align:left"><strong>Tempo do dia:</strong> ${escHtml(resumoConclusaoTempoCalifit(reg))}</div>`:''}
   <div class="info ${treinoContaParaProgressao(reg)?'ig':'ib'}" style="text-align:left">${escHtml(statusProgressaoPorCheckin(reg))}</div>
-  <div class="ms" style="text-align:left">Confiança do feedback: ${escHtml(classificarConfiancaFeedback(reg))}</div>
+  ${htmlConfiancaFeedbackCalifit(reg)}
   <div class="info ig" style="text-align:left">${escHtml(t.resumo||reg.resumo||`${(t.exercicios||[]).length} exercícios registrados`)}${cargasUsadas.length?`<br><strong>Cargas usadas:</strong> ${escHtml(cargasUsadas.join(' · '))}`:''}</div>`;
   if(sugestoes.length){
     const box=document.createElement('div');box.style.textAlign='left';box.style.marginTop='14px';
@@ -10386,7 +10445,7 @@ function verResumoTreinoDia(diaIdx){
   ${reg.notaRetroativa||t.notaRetroativa?`<div class="info ib">${escHtml(reg.notaRetroativa||t.notaRetroativa)}</div>`:''}
   ${resumoConclusaoTempoCalifit(reg)?`<div class="info ib"><strong>Tempo do dia:</strong> ${escHtml(resumoConclusaoTempoCalifit(reg))}</div>`:''}
   <div class="info ${treinoContaParaProgressao(reg)?'ig':'ib'}">${escHtml(statusProgressaoPorCheckin(reg))}</div>
-  <div class="ms">Confiança do feedback: ${escHtml(classificarConfiancaFeedback(reg))}</div>
+  ${htmlConfiancaFeedbackCalifit(reg)}
   <div class="info ig">${escHtml(t.resumo||reg.resumo||`${(t.exercicios||[]).length} exercícios registrados`)}</div>`;
   (t.exercicios||[]).forEach(e=>{
     const series=Array.isArray(e.series)?e.series:(Array.isArray(e.log?.series)?e.log.series:[]);
@@ -10673,7 +10732,12 @@ function abrirRegistroTreinoDiaPlanejado(diaIdx){
 
 function registrarRecuperacaoDiaSemana(diaIdx,tipo){
   const sem=getSem(),dia=ST.plano?.dias?.[diaIdx];if(!sem||!dia) return;
-  if(treinoDiaFuturo(sem,diaIdx)){showToast('Este é um treino futuro. Registre descanso ou atividade apenas no dia planejado ou depois.');return;}
+  if(treinoDiaFuturo(sem,diaIdx)){
+    showToast(dia.tipo==='descanso'
+      ?'Este é um dia futuro de descanso. Registros de recuperação ficam disponíveis no dia ou depois.'
+      :'Esta é uma atividade complementar futura. Registre-a apenas no dia planejado ou depois.');
+    return;
+  }
   const reg=sem.registros?.[diaIdx]||{};
   const ehAtividade=tipo==='atividade';
   const planejadas=ehAtividade?atividadesPlanejadasDia(dia):[];
@@ -10785,6 +10849,84 @@ function abrirEditTreino(){
 function quantidadeExerciciosSessaoCalifit(dia={}){
   return arr(dia.ex).length+arr(dia.ombro).length+arr(dia.core).length;
 }
+function sanitizarJustificativaPlanoCalifit(valor=''){
+  return String(valor||'')
+    .replace(/\s*[·•]\s*[·•]+\s*/g,' · ')
+    .replace(/\.\s*[·•]\s*/g,'. ')
+    .replace(/:\s*\.\s*/g,': ')
+    .replace(/\s{2,}/g,' ')
+    .replace(/^[\s·•:.-]+|[\s·•]+$/g,'')
+    .trim();
+}
+function itensJustificativaPlanoCalifit(dia={}){
+  const categorias=[
+    {chave:'nivel',rotulo:'Nível aplicado',rx:/^n[ií]vel aplicado\s*:\s*/i},
+    {chave:'frequencia',rotulo:'Frequência recente',rx:/^frequ[eê]ncia recente\s*:\s*/i},
+    {chave:'retorno',rotulo:'Estratégia de retorno',rx:/^estrat[eé]gia de retorno(?: gradual)?(?:\s*\([^)]+\))?\s*:\s*/i},
+    {chave:'volume',rotulo:'Ajuste de volume',rx:/^(?:ajuste de volume|volume inicial|calibra[cç][aã]o inicial)\s*:\s*/i},
+    {chave:'distribuicao',rotulo:'Distribuição semanal',rx:/^distribui[cç][aã]o semanal\s*:\s*/i}
+  ];
+  const mapa=new Map();
+  const adicionar=(chave,rotulo,texto)=>{
+    const limpo=sanitizarJustificativaPlanoCalifit(texto).replace(/^[.:]\s*/,'');
+    if(!limpo)return;
+    const atual=mapa.get(chave);
+    if(!atual)mapa.set(chave,{chave,rotulo,texto:limpo});
+    else if(!normTxt(atual.texto).includes(normTxt(limpo)))atual.texto=sanitizarJustificativaPlanoCalifit(`${atual.texto}. ${limpo}`);
+  };
+  sanitizarJustificativaPlanoCalifit(dia.nota||'').split(/\s*[·•]\s*|(?<=\.)\s+(?=[A-ZÁÉÍÓÚÂÊÔÃÕÇ])/).forEach(parte=>{
+    const texto=sanitizarJustificativaPlanoCalifit(parte);
+    if(!texto)return;
+    const cat=categorias.find(c=>c.rx.test(texto));
+    if(cat)adicionar(cat.chave,cat.rotulo,texto.replace(cat.rx,''));
+    else adicionar('ajustes','Outros ajustes',texto);
+  });
+  if(dia.retornoGradual?.ativo)adicionar('retorno','Estratégia de retorno',`Retorno gradual ${dia.retornoGradual.grau||''}${arr(dia.retornoGradual.motivos).length?`: ${arr(dia.retornoGradual.motivos).join(', ')}`:''}.`);
+  const fator=+dia.calibracaoFrequencia?.fatorVolumeAplicado||+dia.calibracaoInicial?.fatorVolumeInicial||1;
+  if(fator<.999)adicionar('volume','Ajuste de volume',`Volume inicial ajustado para ${Math.round(fator*100)}% da referência, preservando progressão conservadora.`);
+  const dist=dia.distribuicaoSemanal;
+  if(dist?.diasPlanejados)adicionar('distribuicao','Distribuição semanal',`${dist.diasPlanejados} treino${+dist.diasPlanejados===1?'':'s'} do plano na semana${dist.ordemSessao?`; esta é a sessão ${dist.ordemSessao}`:''}.`);
+  const ordem=['nivel','frequencia','retorno','volume','distribuicao','ajustes'];
+  return ordem.map(k=>mapa.get(k)).filter(Boolean);
+}
+function htmlJustificativaPlanoCalifit(dia={}){
+  const itens=itensJustificativaPlanoCalifit(dia);
+  if(!itens.length)return'';
+  return `<div class="plan-reason-list" role="list" aria-label="Justificativa do plano">${itens.map(item=>`<div class="plan-reason-item" role="listitem"><strong>${escHtml(item.rotulo)}</strong><span>${escHtml(item.texto)}</span></div>`).join('')}</div>`;
+}
+function ehTreinoDoPlanoCalifit(dia={}){
+  return !!dia&&!['descanso','atividade','recuperacao'].includes(dia.tipo);
+}
+function itensResumoSemanaCalifit(sem,tipo,agora=new Date()){
+  if(!sem||!ST.plano)return[];
+  const hoje=inicioDiaLocal(agora).getTime();
+  return Object.entries(ST.plano.dias||{}).map(([diaIdx,dia])=>{
+    const idx=+diaIdx,reg=sem.registros?.[idx],data=dataDiaSemana(sem,idx);
+    return{diaIdx:idx,dia,reg,data,nome:dia?.nome||tipoLabel(dia?.tipo)};
+  }).filter(item=>{
+    if(!ehTreinoDoPlanoCalifit(item.dia))return false;
+    if(tipo==='feitos')return item.reg?.tipo==='feito'&&!!item.reg.treino&&statusGeralCheckinCalifit(item.reg.statusGeral||item.reg.treino?.statusGeral,item.reg.treino?.exercicios||[])==='sim';
+    if(tipo==='perdidos')return item.reg?.tipo==='perdido';
+    if(tipo==='planejados')return !['feito','perdido'].includes(item.reg?.tipo)&&inicioDiaLocal(item.data).getTime()>=hoje;
+    return false;
+  }).sort((a,b)=>a.data-b.data);
+}
+function abrirDetalhesResumoSemanaCalifit(tipo,origem){
+  const sem=getSem()||semanaMaisRecenteRealCalifit();if(!sem)return;
+  const config={
+    feitos:{titulo:'Treinos do plano feitos',vazio:'Nenhum treino do plano foi concluído nesta semana.',status:'Concluído'},
+    planejados:{titulo:'Treinos do plano planejados',vazio:'Nenhum treino do plano ainda está previsto nesta semana.',status:'Previsto'},
+    perdidos:{titulo:'Treinos do plano perdidos',vazio:'Nenhum treino do plano foi marcado como não realizado.',status:'Não realizado'}
+  }[tipo];if(!config)return;
+  const itens=itensResumoSemanaCalifit(sem,tipo);
+  mOpen('m2',`<div class="week-detail-dialog" role="document"><div class="mt2">${escHtml(config.titulo)}</div><div class="ms">${itens.length} registro${itens.length===1?'':'s'} · Semana ${escHtml(sem.num)}</div><div class="week-detail-list">${itens.length?itens.map(item=>`<div class="week-detail-row"><time datetime="${item.data.toISOString()}">${escHtml(dataCurtaBR(item.data))}</time><span><strong>${escHtml(item.nome)}</strong><small>${escHtml(tipoLabel(item.dia.tipo))}</small></span><em>${escHtml(config.status)}</em></div>`).join(''):`<div class="week-detail-empty">${escHtml(config.vazio)}</div>`}</div><button class="btn btn-s" id="week-detail-close" type="button">Fechar</button></div>`);
+  let aoTeclado=null;
+  const fechar=()=>{if(aoTeclado)document.removeEventListener('keydown',aoTeclado,true);mClose('m2');origem?.focus?.();};
+  $('week-detail-close')?.addEventListener('click',fechar);
+  aoTeclado=e=>{if(e.key==='Escape')fechar();};
+  document.addEventListener('keydown',aoTeclado,true);
+  setTimeout(()=>$('week-detail-close')?.focus(),0);
+}
 function rSemana(){
   const el=$('s1');el.innerHTML='';
   const sem=getSem()||semanaMaisRecenteRealCalifit();
@@ -10793,7 +10935,8 @@ function rSemana(){
   const semNo=sem.semanaNoBloco||1;
   const feitos=Object.values(sem.registros).filter(r=>r.tipo==='feito'&&r.treino&&statusGeralCheckinCalifit(r.statusGeral||r.treino?.statusGeral,r.treino?.exercicios||[])==='sim').length;
   const perdidos=Object.values(sem.registros).filter(r=>r.tipo==='perdido').length;
-  const plan=ST.perfil.diasTreino?.length||5;
+  const plan=Object.values(ST.plano.dias||{}).filter(ehTreinoDoPlanoCalifit).length;
+  const planejadosPendentes=itensResumoSemanaCalifit(sem,'planejados').length;
   const previaPendente=semanaComPreviaPendente(sem);
   const podeReabrir=!!obterSemanaReabrivel();
   const statusSemana=previaPendente?'aguardando aprovação':(sem.aberta===false?'fechada':'aberta');
@@ -10802,8 +10945,8 @@ function rSemana(){
   const resumoSaudeSemana=avisoSaudePlanoConsolidado(ST.perfil);
 
   const card=document.createElement('div');card.className='card week-overview-card';
-  card.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-    <div><div style="font-size:16px;font-weight:700">Semana ${sem.num}</div><div style="font-size:var(--type-small);color:var(--sub)">${fmtSem(sem.inicio,sem.fim)}</div></div>
+  card.innerHTML=`<div class="week-overview-head">
+    <div><div style="font-size:16px;font-weight:700">Semana ${sem.num}</div><div class="week-date-range">${fmtSem(sem.inicio,sem.fim)}</div></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><span style="font-size:var(--type-caption);padding:3px 10px;border-radius:var(--rad-lg);background:${statusBg};color:${statusCor};font-weight:700">Semana ${statusSemana}</span><span style="font-size:var(--type-caption);padding:3px 10px;border-radius:var(--rad-lg);background:#e8f4fd;color:var(--b);font-weight:700" title="${escHtml(cicloSemanaFoco(semNo))}">${escHtml(cicloSemanaLabel(semNo))}</span></div>
   </div>`;
   const grid=document.createElement('div');grid.className='wgrid';
@@ -10816,10 +10959,12 @@ function rSemana(){
     wd.addEventListener('click',()=>verDia(d));grid.appendChild(wd);
   }
   card.appendChild(grid);
-  const stats=document.createElement('div');stats.style.cssText='display:flex;gap:8px;margin-bottom:12px';
-  [[feitos,'Feitos','var(--g)'],[plan,'Planejados','var(--tx)'],[perdidos,'Perdidos','var(--r)']].forEach(([v,l,c])=>{
-    const box=document.createElement('div');box.className='sbox';
-    box.innerHTML=`<div class="sv" style="color:${c}">${v}</div><div class="sl">${l}</div>`;
+  const stats=document.createElement('div');stats.className='week-plan-stats';
+  [[feitos,'Feitos','feitos','var(--g)'],[planejadosPendentes,'Planejados','planejados','var(--tx)'],[perdidos,'Perdidos','perdidos','var(--r)']].forEach(([v,l,tipo,c])=>{
+    const box=document.createElement('button');box.type='button';box.className='sbox week-plan-stat';box.dataset.weekDetail=tipo;
+    box.setAttribute('aria-label',`${l}: ${v} treino${v===1?'':'s'} do plano. Abrir detalhes.`);
+    box.innerHTML=`<div class="sv" style="color:${c}">${v}</div><div class="sl">${l}<small>do plano</small></div>`;
+    box.addEventListener('click',()=>abrirDetalhesResumoSemanaCalifit(tipo,box));
     stats.appendChild(box);
   });
   card.appendChild(stats);
@@ -10932,7 +11077,7 @@ function renderHistoricoTreinos(el){
     const resumo=t.resumo||item.registro.resumo||`${exs.length} exercícios registrados`;
     const exTxt=`${exs.length} exercício${exs.length===1?'':'s'}`;
     const sugTxt=!treinoContaParaProgressao(item.registro)?'Sem progressão · Feedback incompleto':(sugestoes.length?(sugestoes.length===1?'1 sugestão de progressão':`${sugestoes.length} sugestões de progressão`):'Registro inicial · sem histórico suficiente para progressão');
-    const confTxt=`Confiança do feedback: ${classificarConfiancaFeedback(item.registro)}`;
+    const confTxt=`Confiança do feedback: ${avaliarConfiancaFeedbackCalifit(item.registro).nivel}`;
     const row=document.createElement('div');row.className='hr';row.style.cursor='pointer';
     row.dataset.histTreino=i;
     row.innerHTML=`<div style="flex:1">
@@ -10971,7 +11116,7 @@ function abrirTreinoHistorico(idx){
   let h=`<div class="mt2">${escHtml(t.nome||'Treino')}</div>
   <div class="ms">${data.toLocaleString('pt-BR')} · ${DPT[item.diaIdx]||''} · status: concluído</div>
   <div class="info ${treinoContaParaProgressao(item.registro)?'ig':'ib'}">${escHtml(statusProgressaoPorCheckin(item.registro))}</div>
-  <div class="ms">Confiança do feedback: ${escHtml(classificarConfiancaFeedback(item.registro))}</div>
+  ${htmlConfiancaFeedbackCalifit(item.registro)}
   <div class="info ig">${escHtml(t.resumo||item.registro.resumo||`${exs.length} exercícios registrados`)}</div>`;
   if(exs.length){
     h+='<div class="h3" style="margin-top:12px">Exercícios realizados</div>';
@@ -11011,9 +11156,13 @@ function verDia(d){
   <div class="ms">${dataCurtaBR(data)} · ${escHtml(tipoLabel(dia.tipo))}</div>
   <span style="font-size:var(--type-caption);padding:2px 9px;border-radius:var(--rad-md);background:${cor}22;color:${cor};font-weight:var(--fw-bold);display:inline-block;margin-bottom:12px">${escHtml(tipoLabel(dia.tipo))}</span>
   <div class="info ${status==='perdido'?'ir':status==='sem registro'?'ib':'ig'}">Status: ${escHtml(status)}${reg?.data?` · lançado em ${dataHoraCurtaBR(reg.data)}`:''}</div>`;
-  if(futuro) h+='<div class="info ib">Este é um treino futuro. Você pode revisar o plano, mas só registre execução no dia do treino ou depois. Alterações em treino futuro mudam apenas o plano previsto e não contam como treino realizado.</div>';
+  if(futuro) h+=dia.tipo==='descanso'
+    ?'<div class="info ib">Este é um dia futuro de descanso. Você pode consultar a programação; registros de recuperação ficam disponíveis no dia ou depois.</div>'
+    :dia.tipo==='atividade'
+      ?'<div class="info ib">Esta é uma atividade complementar futura. Você pode consultar a programação; o registro fica disponível no dia ou depois.</div>'
+      :'<div class="info ib">Este é um treino futuro. Você pode revisar o plano, mas só registre execução no dia do treino ou depois. Alterações em treino futuro mudam apenas o plano previsto e não contam como treino realizado.</div>';
   if(reg?.notaRetroativa) h+=`<div class="info ib">${escHtml(reg.notaRetroativa)}</div>`;
-  if(dia.nota) h+=`<div class="info io">${escHtml(dia.nota)}</div>`;
+  if(dia.nota) h+=`<div class="info io plan-reason">${htmlJustificativaPlanoCalifit(dia)}</div>`;
   if(dia.tipo==='descanso') h+=`<p style="color:var(--sub);font-size:13px">Dia de descanso. Você pode registrar ou editar uma observação de recuperação.</p>`;
   else if(dia.tipo==='atividade'){
     const planejadas=atividadesPlanejadasDia(dia);
@@ -12914,12 +13063,12 @@ function rCorpo(){
   const diasSemBio=b?Math.floor((Date.now()-new Date(b.data).getTime())/(1000*60*60*24)):null;
   const html=[];
   const push=s=>html.push(s);
-  const scoreHtml=leitura.score?`<div class="body-score-pill">${leitura.score}/100</div>`:'';
+  const scoreHtml=leitura.score?`<div class="body-score-wrap"><div class="body-score-label">Indicador dos dados de composição</div><div class="body-score-pill">${leitura.score}/100</div><div class="body-score-help">Combina gordura corporal informada com massa muscular, água e gordura visceral quando disponíveis. Valores de referência aumentam o indicador; sinais de atenção o reduzem. Serve apenas para organizar o acompanhamento, não para diagnóstico.</div><details><summary>Como melhorar esta nota?</summary><div>Registre medições completas e comparáveis, de preferência no mesmo aparelho e em condições semelhantes.</div></details></div>`:'';
   const kpis=[
     leitura.imc?`<div class="sbox"><div class="sv">${leitura.imc}</div><div class="sl">IMC</div></div>`:'',
     leitura.gordura!=null?`<div class="sbox"><div class="sv">${leitura.gordura}%</div><div class="sl">Gordura</div></div>`:'',
     leitura.massaMagra!=null?`<div class="sbox"><div class="sv">${leitura.massaMagra}kg</div><div class="sl">Massa magra</div></div>`:'',
-    leitura.score?`<div class="sbox"><div class="sv">${leitura.score}</div><div class="sl">Score</div></div>`:''
+    leitura.score?`<div class="sbox"><div class="sv">${leitura.score}</div><div class="sl">Indicador de composição</div></div>`:''
   ].filter(Boolean).join('');
   const metricas=[
     bodyMetricCardHtml('IMC',leitura.imc?String(leitura.imc):'',leitura.imcStatus.l,'Base: IMC adulto OMS/CDC'),
@@ -14927,6 +15076,10 @@ async function sendChatMsg(msg){
     if(end)cm.insertBefore(loading,end);
     end?.scrollIntoView();
   }
+  if(respostaAjudaUsoCalifit(msg)){
+    registrarRespostaChatAssistenteCalifit(respostaAjudaUsoCalifit(msg));
+    return;
+  }
   if(processarAcaoAssistenteEstadoCalifit(msg)) return;
   if(/skill tree|progress[aã]o de habilidade|caminho para|como chegar em|evoluir para/i.test(msg)){
     try{await carregarModuloExplorarCalifit();}catch{}
@@ -16456,8 +16609,7 @@ function tipoDiagramaExercicioCalifit(nome){
   return info.modo==='proprio'||info.modo==='compartilhado'?info.tipo:'';
 }
 function rotuloCoberturaDiagramaCalifit(modo,curto=false){
-  if(modo==='proprio') return curto?'Esquema específico':'Demonstração visual específica';
-  if(modo==='compartilhado') return curto?'Base visual':'Demonstração do padrão-base';
+  if(modo==='proprio'||modo==='compartilhado') return curto?'Visual disponível':'Visual de referência';
   if(modo==='texto') return curto?'Texto detalhado':'Orientação completa em texto';
   return curto?'Sem classificação':'Demonstração ainda não classificada';
 }
@@ -16928,8 +17080,10 @@ function htmlDiagramaExercicioCalifit(nome,compacto=false){
   const svg=svgDiagramaExercicioCalifit(tipo);
   if(!dados||!svg) return '';
   const nivel=nivelDiagramaExercicioCalifit();
-  const tag=cobertura.modo==='proprio'?'Esquema específico':'Base compartilhada';
-  const aviso=cobertura.modo==='compartilhado'?'<div class="exercise-visual-shared-note">Este esquema mostra o padrão-base do movimento. Use as instruções escritas para o apoio, a carga e o equipamento desta variação.</div>':'';
+  const tag=cobertura.modo==='proprio'?'Diagrama específico do exercício':'Ilustração de referência';
+  const aviso=cobertura.modo==='proprio'
+    ?'<div class="exercise-visual-shared-note">Representa diretamente o exercício selecionado.</div>'
+    :'<div class="exercise-visual-shared-note">Usa uma base visual próxima para apoiar o entendimento. Siga as instruções escritas desta variação.</div>';
   return `<div class="exercise-visual priority${compacto?' compact':''}" data-ex-diagrama="${escHtml(tipo)}" data-diagrama-qualidade="prioritario" data-diagrama-cobertura="${escHtml(cobertura.modo)}" data-nivel-diagrama="${escHtml(nivel)}"><div class="exercise-visual-head"><span>${escHtml(dados.titulo)}</span><span class="exercise-visual-tag">${escHtml(tag)}</span></div>${svg}${aviso}<div class="exercise-visual-cues"><div class="exercise-visual-cue"><strong>O que deve se mover</strong>${escHtml(dados.move)}</div><div class="exercise-visual-cue avoid"><strong>Evite isto</strong>${escHtml(dados.evite)}</div></div><div class="exercise-visual-note">${escHtml(dados.nota)}</div></div>`;
 }
 function listarDiagramasExerciciosCalifit(){return listarCoberturaDiagramasCalifit().filter(x=>x.modo==='proprio'||x.modo==='compartilhado').map(x=>({...x,qualidade:svgDiagramaExercicioCalifit(x.tipo)?'prioritario':'sem_diagrama'}));}
@@ -17366,14 +17520,20 @@ function filtrarEventosHistoricoCalifit(eventos=[],filtros={}){
   });
 }
 function resumoHistoricoEvolucaoCalifit(eventos=[]){
-  const concluidos=arr(eventos).filter(e=>e.status==='concluido').length;
-  const parciais=arr(eventos).filter(e=>e.status==='parcial').length;
-  const nao=arr(eventos).filter(e=>e.status==='nao').length;
-  const total=concluidos+parciais+nao;
-  const aderencia=total?Math.round(((concluidos+parciais*.5)/total)*100):0;
-  const atividades=arr(eventos).filter(e=>e.categoria==='atividade').length;
+  const lista=arr(eventos);
+  const concluidos=lista.filter(e=>e.status==='concluido').length;
+  const parciais=lista.filter(e=>e.status==='parcial').length;
+  const nao=lista.filter(e=>e.status==='nao').length;
+  const treinosPlano=lista.filter(e=>e.categoria==='calistenia');
+  const treinosPlanoConcluidos=treinosPlano.filter(e=>e.status==='concluido').length;
+  const treinosPlanoParciais=treinosPlano.filter(e=>e.status==='parcial').length;
+  const treinosPlanoNao=treinosPlano.filter(e=>e.status==='nao').length;
+  const totalPlano=treinosPlanoConcluidos+treinosPlanoParciais+treinosPlanoNao;
+  const aderencia=totalPlano?Math.round(((treinosPlanoConcluidos+treinosPlanoParciais*.5)/totalPlano)*100):0;
+  const atividades=lista.filter(e=>e.categoria==='atividade').length;
+  const atividadesConcluidas=lista.filter(e=>e.categoria==='atividade'&&e.status==='concluido').length;
   const adaptacoes=arr(eventos).reduce((s,e)=>s+(+e.adaptacoes||0),0);
-  return{concluidos,parciais,nao,total,aderencia,atividades,adaptacoes};
+  return{concluidos,parciais,nao,total:concluidos+parciais+nao,aderencia,atividades,atividadesConcluidas,treinosPlanoConcluidos,treinosPlanoParciais,treinosPlanoNao,totalPlano,adaptacoes};
 }
 function resumoSemanaHistorico163O4(eventos=[],semanaId=''){
   const itens=arr(eventos).filter(e=>String(e.semanaId)===String(semanaId));
@@ -17451,7 +17611,7 @@ function renderHistoricoTreinos(el){
   const evolucoes=evolucaoExerciciosHistoricoCalifit(todos);
   card.innerHTML=`<div class="hist-o4-head"><div class="h3">${tituloIcone('historico','Histórico e evolução')}</div><div class="hist-o4-count" id="hist-o4-count"></div></div>
   <div class="hist-o4-summary">
-    <div class="hist-o4-stat"><strong id="hist-o4-ok">0</strong><span>Concluídos</span></div>
+    <div class="hist-o4-stat"><strong id="hist-o4-ok">0</strong><span id="hist-o4-ok-label">Registros concluídos</span><small id="hist-o4-ok-breakdown"></small></div>
     <div class="hist-o4-stat"><strong id="hist-o4-partial">0</strong><span>Parciais</span></div>
     <div class="hist-o4-stat"><strong id="hist-o4-no">0</strong><span>Não realizados</span></div>
     <div class="hist-o4-stat"><strong id="hist-o4-adherence">0%</strong><span>Aderência</span></div>
@@ -17477,6 +17637,10 @@ function renderHistoricoTreinos(el){
     const eventos=filtrarEventosHistoricoCalifit(todos,filtros);
     const resumo=resumoHistoricoEvolucaoCalifit(eventos);
     if($('hist-o4-ok')) $('hist-o4-ok').textContent=resumo.concluidos;
+    if($('hist-o4-ok-label')) $('hist-o4-ok-label').textContent=resumo.atividadesConcluidas?'Registros concluídos':'Treinos do plano concluídos';
+    if($('hist-o4-ok-breakdown')) $('hist-o4-ok-breakdown').textContent=resumo.atividadesConcluidas
+      ?`${resumo.treinosPlanoConcluidos} treino${resumo.treinosPlanoConcluidos===1?'':'s'} do plano + ${resumo.atividadesConcluidas} atividade${resumo.atividadesConcluidas===1?' complementar':'s complementares'}`
+      :'';
     if($('hist-o4-partial')) $('hist-o4-partial').textContent=resumo.parciais;
     if($('hist-o4-no')) $('hist-o4-no').textContent=resumo.nao;
     if($('hist-o4-adherence')) $('hist-o4-adherence').textContent=`${resumo.aderencia}%`;
@@ -17516,6 +17680,67 @@ if(typeof window!=='undefined'&&window.__CALIFIT_TEST_HOOKS__){
   });
 }
 
+// 167A · integração responsiva e ajuda local, sem alteração de schema/storage.
+function respostaAjudaUsoCalifit(texto=''){
+  const msg=normTxt(texto);
+  if(/(como|onde|quero|posso).*(salv|backup|export)|salvar meus dados/.test(msg)){
+    return 'O CaliFit salva automaticamente neste dispositivo. Para criar uma cópia, abra Assistente > Perfil & Plano e use Exportar backup. Para recuperar a cópia, use Restaurar/importar no mesmo painel. Limpar os dados do navegador ou desinstalar o app pode remover os dados locais quando não existe um backup.';
+  }
+  if(/(restaur|import).*(backup|dados)|backup.*(restaur|import)/.test(msg)) return 'Abra Assistente > Perfil & Plano e escolha Restaurar/importar. Confira o arquivo antes de confirmar: a importação substitui o estado local atual.';
+  if(/(instal|offline|sem internet)/.test(msg)) return 'O app funciona offline depois de carregado. Use a opção Instalar app do navegador quando ela estiver disponível; seus dados continuam locais neste dispositivo.';
+  if(/(cronometro|timer)/.test(msg)) return 'Use o cronômetro nos controles do exercício. Ele fica fixo no topo, permite pausar, zerar e fechar, e somente um cronômetro permanece ativo.';
+  if(/check.?in/.test(msg)) return 'O check-in fica no treino concluído e na Semana. Registre esforço, dificuldade e dor para melhorar a qualidade das recomendações.';
+  if(/(trocar|editar).*(exercicio)|nao consigo fazer/.test(msg)) return 'No card do exercício, use Trocar exercício. O app mostra substitutos compatíveis e só aplica a troca depois da sua confirmação.';
+  if(/(biblioteca|skill tree)/.test(msg)&&/(onde|encontr|abrir)/.test(msg)) return 'Biblioteca e Skill Tree ficam nos atalhos de consulta do app. Elas abrem sem alterar seu plano.';
+  if(/(privacidade|dados locais)/.test(msg)) return 'Seus dados ficam neste dispositivo e o Assistente funciona localmente. Exporte um backup antes de limpar dados ou desinstalar.';
+  return '';
+}
+function atualizarTopOffsetCalifit(){
+  const raiz=document.documentElement,tf=$('tf'),hdr=$('hdr'),nav=$('nav');
+  const timer=tf?.classList.contains('on')?Math.ceil(tf.getBoundingClientRect().height):0;
+  const cabecalho=Math.ceil((hdr?.getBoundingClientRect().height||0)+(nav?.getBoundingClientRect().height||0));
+  raiz.style.setProperty('--califit-timer-offset',`${timer}px`);
+  raiz.style.setProperty('--califit-top-offset',`${timer+cabecalho}px`);
+  raiz.style.setProperty('--app-top-offset',`${timer+cabecalho}px`);
+  document.body.classList.toggle('califit-timer-open',timer>0);
+}
+function limparConversaAssistenteCalifit(){
+  showConfirm('Limpar conversa','Isso apaga somente o histórico do Assistente neste dispositivo. Plano, check-ins e dados corporais serão preservados.',()=>{
+    ST.chat=[];
+    salvar();
+    rTreinador();
+    showToast('Conversa limpa.');
+  },'Limpar');
+}
+function aprimorarInterface167A(){
+  const tf=$('tf'),nome=$('tf-n');
+  if(nome){
+    nome.title=nome.textContent||'';
+    nome.setAttribute('aria-label',nome.textContent||'Nome do exercício');
+  }
+  const s3=$('s3');
+  if(s3&&!$('chat-clear-167a')&&($('chat-msgs')||$('chat-last-answer'))){
+    const b=document.createElement('button');
+    b.type='button';b.id='chat-clear-167a';b.className='btn btn-s btn-sm chat-clear-167a';
+    b.textContent='Limpar conversa';b.addEventListener('click',limparConversaAssistenteCalifit);
+    ($('chat-msgs')||$('chat-last-answer')).insertAdjacentElement('afterend',b);
+  }
+  document.querySelectorAll('button').forEach(b=>{
+    if(/Não consigo fazer/i.test(b.textContent||'')){b.textContent='Trocar exercício';b.title='Não consigo fazer este exercício';}
+    if(/Dispensar/i.test(b.textContent||'')&&!b.querySelector('[data-ico]')) b.insertAdjacentHTML('afterbegin',`${iconeCalifit('fechar')} `);
+  });
+  atualizarTopOffsetCalifit();
+}
+function instalarCorrecoes167A(){
+  let agendado=0;
+  const atualizar=()=>{cancelAnimationFrame(agendado);agendado=requestAnimationFrame(aprimorarInterface167A);};
+  new MutationObserver(atualizar).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','aria-expanded']});
+  window.addEventListener('resize',atualizar,{passive:true});
+  window.addEventListener('orientationchange',atualizar,{passive:true});
+  document.addEventListener('click',()=>setTimeout(atualizar,0),true);
+  atualizar();
+}
+
 function iniciarAplicativoCalifit(){
   try{
     load();
@@ -17529,6 +17754,7 @@ function iniciarAplicativoCalifit(){
     // Correções não críticas ficam fora do caminho da primeira interação.
     agendarTarefaOciosaCalifit(()=>garantirBotoesTipoButtonCalifit(document),{timeout:1200});
     registrarServiceWorkerCalifit();
+    instalarCorrecoes167A();
   }catch(erro){
     console.error('Falha ao iniciar o CaliFit Pro',erro);
     mostrarFalhaCarregamentoCalifit();
