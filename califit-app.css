@@ -2995,3 +2995,8 @@ body.califit-timer-open #app{padding-top:0!important}
   .hist-o4-filters{grid-template-columns:1fr!important}
   .hist-o4-filters select{font-size:14px!important;padding-left:12px!important;padding-right:38px!important;letter-spacing:normal}
 }
+
+
+/* 167G.12 — filtros iguais com rótulo robusto em selects nativos Android */
+.hist-o4-filters{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
+.hist-o4-filters select{min-width:0!important;width:100%!important}
