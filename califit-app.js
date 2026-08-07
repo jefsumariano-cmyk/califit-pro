@@ -7906,6 +7906,13 @@ function acionarLembreteCalifit(tipo,item=null){
   mClose('m2');
   goTab(l?.tab||0);
 }
+function sincronizarLembretesVisuaisCalifit(){
+  // 167G.12: a Central e o Assistente devem refletir imediatamente o mesmo estado.
+  // Hoje pode ser reconstruído em segundo plano; o Assistente só é redesenhado
+  // quando está visível, evitando contador de lembretes desatualizado.
+  rHoje();
+  if(document.querySelector('#s3.sec.on')) rTreinador();
+}
 function abrirCentralLembretesCalifit(agoraOpcional){
   // 167G.11: addEventListener passa um MouseEvent como primeiro argumento.
   // A Central deve usar esse evento apenas como clique, nunca como uma data.
@@ -7938,7 +7945,7 @@ function abrirCentralLembretesCalifit(agoraOpcional){
     preservarScrollDuranteCalifit(()=>{
       dispensarLembreteCalifit(btn.dataset.lembreteCentralDismiss);
       abrirCentralLembretesCalifit();
-      rHoje();
+      sincronizarLembretesVisuaisCalifit();
     });
   }));
   document.querySelectorAll('[data-lembrete-central-adiar]').forEach(btn=>btn.addEventListener('click',()=>{
@@ -7946,14 +7953,14 @@ function abrirCentralLembretesCalifit(agoraOpcional){
       adiarLembreteCalifit(btn.dataset.lembreteCentralAdiar,60);
       showToast('Lembrete adiado por 1 hora.');
       abrirCentralLembretesCalifit();
-      rHoje();
+      sincronizarLembretesVisuaisCalifit();
     });
   }));
   document.querySelectorAll('[data-lembrete-reativar]').forEach(btn=>btn.addEventListener('click',()=>{
     preservarScrollDuranteCalifit(()=>{
       limparDismissLembretesCalifit(btn.dataset.lembreteReativar);
       abrirCentralLembretesCalifit();
-      rHoje();
+      sincronizarLembretesVisuaisCalifit();
     });
   }));
   $('central-lembretes-fechar')?.addEventListener('click',()=>mClose('m2'));
@@ -16687,342 +16694,342 @@ function quadroDiagramaCalifit(x,rotulo,conteudo,destaque=false){
   const titulo=String(rotulo||'').replace(/^\s*\d+\.\s*/,'');
   return `<g transform="translate(${x} 0)"><rect class="${destaque?'dv-panel-focus':'dv-panel'}" x="0" y="7" width="100" height="138" rx="10"/><text class="dv-label" x="50" y="24" text-anchor="middle">${escHtml(titulo)}</text>${conteudo}</g>`;
 }
-function passoDiagramaCalifit(){return '';}
+
 function svgDiagramaExercicioCalifit(tipo){
   const cabeca=(x,y)=>`<circle class="dv-joint" cx="${x}" cy="${y}" r="6.5"/>`;
   const solo=`<line class="dv-ground" x1="8" y1="126" x2="92" y2="126"/>`;
   let f1='',f2='',f3='';
   switch(tipo){
     case 'hinge':
-      f1=`${solo}${cabeca(51,39)}<path class="dv-body" d="M51 46 L51 78 M51 56 L39 82 M51 56 L63 82 M51 78 L42 123 M51 78 L61 123"/><circle class="dv-accent" cx="38" cy="89" r="4"/><circle class="dv-accent" cx="64" cy="89" r="4"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(33,58)}<path class="dv-body" d="M39 63 L67 76 M67 76 L53 123 M67 76 L76 123 M43 68 L49 105 M45 68 L60 105"/><circle class="dv-accent" cx="49" cy="109" r="4"/><circle class="dv-accent" cx="61" cy="109" r="4"/><path class="dv-arrow" d="M72 48 L90 48 M84 43 l6 5 -6 5"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(51,39)}<path class="dv-body" d="M51 46 L51 78 M51 56 L39 82 M51 56 L63 82 M51 78 L42 123 M51 78 L61 123"/><path class="dv-arrow" d="M83 92 Q91 72 82 53"/><path class="dv-guide" d="M26 50 L74 74"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(51,39)}<path class="dv-body" d="M51 46 L51 78 M51 56 L39 82 M51 56 L63 82 M51 78 L42 123 M51 78 L61 123"/><circle class="dv-accent" cx="38" cy="89" r="4"/><circle class="dv-accent" cx="64" cy="89" r="4"/>`;
+      f2=`${solo}${cabeca(33,58)}<path class="dv-body" d="M39 63 L67 76 M67 76 L53 123 M67 76 L76 123 M43 68 L49 105 M45 68 L60 105"/><circle class="dv-accent" cx="49" cy="109" r="4"/><circle class="dv-accent" cx="61" cy="109" r="4"/><path class="dv-arrow" d="M72 48 L90 48 M84 43 l6 5 -6 5"/>`;
+      f3=`${solo}${cabeca(51,39)}<path class="dv-body" d="M51 46 L51 78 M51 56 L39 82 M51 56 L63 82 M51 78 L42 123 M51 78 L61 123"/><path class="dv-arrow" d="M83 92 Q91 72 82 53"/><path class="dv-guide" d="M26 50 L74 74"/>`;break;
     case 'hollow':case 'hollow_ball':
-      f1=`${solo}${cabeca(22,108)}<path class="dv-body" d="M29 112 L54 113 M39 112 L36 89 M48 112 L67 92 M43 112 L64 119"/>${tipo==='hollow_ball'?'<circle class="dv-accent" cx="35" cy="83" r="7"/>':''}${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(20,106)}<path class="dv-body" d="M27 110 L52 111 L89 101 M31 109 L65 83"/>${tipo==='hollow_ball'?'<circle class="dv-accent" cx="72" cy="78" r="7"/>':''}<path class="dv-arrow" d="M70 118 Q86 112 92 101"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(20,106)}<path class="dv-body" d="M27 110 L52 111 L86 101 M31 109 L63 84"/><path class="dv-accent" d="M30 116 Q48 120 66 116"/><path class="dv-guide" d="M14 116 L91 116"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(22,108)}<path class="dv-body" d="M29 112 L54 113 M39 112 L36 89 M48 112 L67 92 M43 112 L64 119"/>${tipo==='hollow_ball'?'<circle class="dv-accent" cx="35" cy="83" r="7"/>':''}`;
+      f2=`${solo}${cabeca(20,106)}<path class="dv-body" d="M27 110 L52 111 L89 101 M31 109 L65 83"/>${tipo==='hollow_ball'?'<circle class="dv-accent" cx="72" cy="78" r="7"/>':''}<path class="dv-arrow" d="M70 118 Q86 112 92 101"/>`;
+      f3=`${solo}${cabeca(20,106)}<path class="dv-body" d="M27 110 L52 111 L86 101 M31 109 L63 84"/><path class="dv-accent" d="M30 116 Q48 120 66 116"/><path class="dv-guide" d="M14 116 L91 116"/>`;break;
     case 'side_plank':
-      f1=`${solo}${cabeca(21,111)}<path class="dv-body" d="M28 113 L55 116 L87 122 M40 115 L37 126 M57 116 L62 126"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(21,82)}<path class="dv-body" d="M28 86 L54 96 L88 112 M40 90 L36 124 M55 96 L61 66"/><path class="dv-arrow" d="M72 113 L72 88 M67 94 l5 -6 5 6"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(21,82)}<path class="dv-body" d="M28 86 L54 96 L88 112 M40 90 L36 124 M55 96 L61 66"/><path class="dv-guide" d="M20 82 L89 112"/><circle class="dv-anchor" cx="38" cy="124" r="3"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(21,111)}<path class="dv-body" d="M28 113 L55 116 L87 122 M40 115 L37 126 M57 116 L62 126"/>`;
+      f2=`${solo}${cabeca(21,82)}<path class="dv-body" d="M28 86 L54 96 L88 112 M40 90 L36 124 M55 96 L61 66"/><path class="dv-arrow" d="M72 113 L72 88 M67 94 l5 -6 5 6"/>`;
+      f3=`${solo}${cabeca(21,82)}<path class="dv-body" d="M28 86 L54 96 L88 112 M40 90 L36 124 M55 96 L61 66"/><path class="dv-guide" d="M20 82 L89 112"/><circle class="dv-anchor" cx="38" cy="124" r="3"/>`;break;
     case 'bird_dog':
-      f1=`${solo}${cabeca(25,83)}<path class="dv-body" d="M32 87 L58 94 M38 89 L33 125 M57 94 L63 125 M57 94 L82 125"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(25,83)}<path class="dv-body" d="M32 87 L58 94 M38 89 L33 125 M57 94 L63 125 M35 87 L9 77 M58 94 L95 88"/><path class="dv-arrow" d="M73 73 L93 73 M87 68 l6 5 -6 5"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(25,83)}<path class="dv-body" d="M32 87 L58 94 M38 89 L33 125 M57 94 L63 125 M35 87 L9 77 M58 94 L95 88"/><path class="dv-guide" d="M8 80 L95 89"/><path class="dv-accent" d="M45 82 L61 82"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(25,83)}<path class="dv-body" d="M32 87 L58 94 M38 89 L33 125 M57 94 L63 125 M57 94 L82 125"/>`;
+      f2=`${solo}${cabeca(25,83)}<path class="dv-body" d="M32 87 L58 94 M38 89 L33 125 M57 94 L63 125 M35 87 L9 77 M58 94 L95 88"/><path class="dv-arrow" d="M73 73 L93 73 M87 68 l6 5 -6 5"/>`;
+      f3=`${solo}${cabeca(25,83)}<path class="dv-body" d="M32 87 L58 94 M38 89 L33 125 M57 94 L63 125 M35 87 L9 77 M58 94 L95 88"/><path class="dv-guide" d="M8 80 L95 89"/><path class="dv-accent" d="M45 82 L61 82"/>`;break;
     case 'dead_bug':
-      f1=`${solo}${cabeca(18,112)}<path class="dv-body" d="M25 115 L52 115 M36 115 L32 85 M45 115 L64 91 M40 115 L60 122"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(18,112)}<path class="dv-body" d="M25 115 L52 115 M36 115 L21 82 M45 115 L94 123 M40 115 L64 91"/><path class="dv-arrow" d="M69 104 L92 115 M86 108 l7 7 -9 1"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(18,112)}<path class="dv-body" d="M25 115 L52 115 M36 115 L21 82 M45 115 L94 123 M40 115 L64 91"/><path class="dv-accent" d="M29 121 Q44 124 58 121"/><path class="dv-guide" d="M9 126 L95 126"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(18,112)}<path class="dv-body" d="M25 115 L52 115 M36 115 L32 85 M45 115 L64 91 M40 115 L60 122"/>`;
+      f2=`${solo}${cabeca(18,112)}<path class="dv-body" d="M25 115 L52 115 M36 115 L21 82 M45 115 L94 123 M40 115 L64 91"/><path class="dv-arrow" d="M69 104 L92 115 M86 108 l7 7 -9 1"/>`;
+      f3=`${solo}${cabeca(18,112)}<path class="dv-body" d="M25 115 L52 115 M36 115 L21 82 M45 115 L94 123 M40 115 L64 91"/><path class="dv-accent" d="M29 121 Q44 124 58 121"/><path class="dv-guide" d="M9 126 L95 126"/>`;break;
     case 'scap_pull':
-      f1=`<line class="dv-equip" x1="11" y1="31" x2="91" y2="31"/>${cabeca(50,61)}<path class="dv-body" d="M50 68 L50 99 M50 75 L29 33 M50 75 L71 33 M50 99 L40 130 M50 99 L60 130"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`<line class="dv-equip" x1="11" y1="31" x2="91" y2="31"/>${cabeca(50,53)}<path class="dv-body" d="M50 60 L50 92 M50 67 L29 33 M50 67 L71 33 M50 92 L40 124 M50 92 L60 124"/><path class="dv-arrow" d="M86 84 L86 59 M81 65 l5 -6 5 6"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`<line class="dv-equip" x1="11" y1="31" x2="91" y2="31"/>${cabeca(50,53)}<path class="dv-body" d="M50 60 L50 92 M50 67 L29 33 M50 67 L71 33 M50 92 L40 124 M50 92 L60 124"/><path class="dv-guide" d="M29 33 L50 67 L71 33"/><path class="dv-accent" d="M41 65 Q50 72 59 65"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`<line class="dv-equip" x1="11" y1="31" x2="91" y2="31"/>${cabeca(50,61)}<path class="dv-body" d="M50 68 L50 99 M50 75 L29 33 M50 75 L71 33 M50 99 L40 130 M50 99 L60 130"/>`;
+      f2=`<line class="dv-equip" x1="11" y1="31" x2="91" y2="31"/>${cabeca(50,53)}<path class="dv-body" d="M50 60 L50 92 M50 67 L29 33 M50 67 L71 33 M50 92 L40 124 M50 92 L60 124"/><path class="dv-arrow" d="M86 84 L86 59 M81 65 l5 -6 5 6"/>`;
+      f3=`<line class="dv-equip" x1="11" y1="31" x2="91" y2="31"/>${cabeca(50,53)}<path class="dv-body" d="M50 60 L50 92 M50 67 L29 33 M50 67 L71 33 M50 92 L40 124 M50 92 L60 124"/><path class="dv-guide" d="M29 33 L50 67 L71 33"/><path class="dv-accent" d="M41 65 Q50 72 59 65"/>`;break;
     case 'band_row':
-      f1=`<line class="dv-equip" x1="92" y1="36" x2="92" y2="126"/><line class="dv-band" x1="92" y1="76" x2="58" y2="76"/>${cabeca(37,51)}<path class="dv-body" d="M37 58 L37 92 M37 66 L58 76 M37 92 L28 126 M37 92 L48 126"/>${solo}${passoDiagramaCalifit(1,84,20)}`;
-      f2=`<line class="dv-equip" x1="92" y1="36" x2="92" y2="126"/><line class="dv-band" x1="92" y1="76" x2="52" y2="76"/>${cabeca(37,51)}<path class="dv-body" d="M37 58 L37 92 M37 66 L52 76 M37 92 L28 126 M37 92 L48 126 M52 76 L42 70"/><path class="dv-arrow" d="M75 61 L54 61 M60 56 l-6 5 6 5"/>${solo}${passoDiagramaCalifit(2,84,20)}`;
-      f3=`<line class="dv-equip" x1="92" y1="36" x2="92" y2="126"/><line class="dv-band" x1="92" y1="76" x2="52" y2="76"/>${cabeca(37,51)}<path class="dv-body" d="M37 58 L37 92 M37 66 L52 76 M37 92 L28 126 M37 92 L48 126 M52 76 L42 70"/><path class="dv-accent" d="M27 69 Q37 76 47 69"/>${solo}${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`<line class="dv-equip" x1="92" y1="36" x2="92" y2="126"/><line class="dv-band" x1="92" y1="76" x2="58" y2="76"/>${cabeca(37,51)}<path class="dv-body" d="M37 58 L37 92 M37 66 L58 76 M37 92 L28 126 M37 92 L48 126"/>${solo}`;
+      f2=`<line class="dv-equip" x1="92" y1="36" x2="92" y2="126"/><line class="dv-band" x1="92" y1="76" x2="52" y2="76"/>${cabeca(37,51)}<path class="dv-body" d="M37 58 L37 92 M37 66 L52 76 M37 92 L28 126 M37 92 L48 126 M52 76 L42 70"/><path class="dv-arrow" d="M75 61 L54 61 M60 56 l-6 5 6 5"/>${solo}`;
+      f3=`<line class="dv-equip" x1="92" y1="36" x2="92" y2="126"/><line class="dv-band" x1="92" y1="76" x2="52" y2="76"/>${cabeca(37,51)}<path class="dv-body" d="M37 58 L37 92 M37 66 L52 76 M37 92 L28 126 M37 92 L48 126 M52 76 L42 70"/><path class="dv-accent" d="M27 69 Q37 76 47 69"/>${solo}`;break;
     case 'trx_row':
-      f1=`<path class="dv-equip" d="M80 23 L90 23 L67 61 M93 23 L98 23 L73 61"/>${cabeca(23,82)}<path class="dv-body" d="M30 86 L55 99 L88 124 M55 99 L71 124 M32 86 L70 62"/>${solo}${passoDiagramaCalifit(1,84,20)}`;
-      f2=`<path class="dv-equip" d="M80 23 L90 23 L67 61 M93 23 L98 23 L73 61"/>${cabeca(42,75)}<path class="dv-body" d="M49 79 L65 96 L88 124 M65 96 L74 124 M51 81 L71 62"/><path class="dv-arrow" d="M28 62 L46 62 M40 57 l6 5 -6 5"/>${solo}${passoDiagramaCalifit(2,84,20)}`;
-      f3=`<path class="dv-equip" d="M80 23 L90 23 L67 61 M93 23 L98 23 L73 61"/>${cabeca(42,75)}<path class="dv-body" d="M49 79 L65 96 L88 124 M65 96 L74 124 M51 81 L71 62"/><path class="dv-guide" d="M42 75 L88 124"/>${solo}${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`<path class="dv-equip" d="M80 23 L90 23 L67 61 M93 23 L98 23 L73 61"/>${cabeca(23,82)}<path class="dv-body" d="M30 86 L55 99 L88 124 M55 99 L71 124 M32 86 L70 62"/>${solo}`;
+      f2=`<path class="dv-equip" d="M80 23 L90 23 L67 61 M93 23 L98 23 L73 61"/>${cabeca(42,75)}<path class="dv-body" d="M49 79 L65 96 L88 124 M65 96 L74 124 M51 81 L71 62"/><path class="dv-arrow" d="M28 62 L46 62 M40 57 l6 5 -6 5"/>${solo}`;
+      f3=`<path class="dv-equip" d="M80 23 L90 23 L67 61 M93 23 L98 23 L73 61"/>${cabeca(42,75)}<path class="dv-body" d="M49 79 L65 96 L88 124 M65 96 L74 124 M51 81 L71 62"/><path class="dv-guide" d="M42 75 L88 124"/>${solo}`;break;
     case 'body_saw':
-      f1=`${solo}${cabeca(20,102)}<path class="dv-body" d="M27 105 L58 111 L90 121 M39 107 L35 126 M57 111 L63 126"/><path class="dv-equip" d="M90 121 L98 121"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(11,102)}<path class="dv-body" d="M18 105 L51 111 L86 121 M30 107 L26 126 M50 111 L56 126"/><path class="dv-arrow" d="M68 93 L88 93 M82 88 l6 5 -6 5"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(11,102)}<path class="dv-body" d="M18 105 L51 111 L86 121 M30 107 L26 126 M50 111 L56 126"/><path class="dv-guide" d="M10 102 L87 121"/><path class="dv-accent" d="M45 108 Q52 113 60 109"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(20,102)}<path class="dv-body" d="M27 105 L58 111 L90 121 M39 107 L35 126 M57 111 L63 126"/><path class="dv-equip" d="M90 121 L98 121"/>`;
+      f2=`${solo}${cabeca(11,102)}<path class="dv-body" d="M18 105 L51 111 L86 121 M30 107 L26 126 M50 111 L56 126"/><path class="dv-arrow" d="M68 93 L88 93 M82 88 l6 5 -6 5"/>`;
+      f3=`${solo}${cabeca(11,102)}<path class="dv-body" d="M18 105 L51 111 L86 121 M30 107 L26 126 M50 111 L56 126"/><path class="dv-guide" d="M10 102 L87 121"/><path class="dv-accent" d="M45 108 Q52 113 60 109"/>`;break;
     case 'trx_fallout':
-      f1=`<path class="dv-equip" d="M86 22 L95 22 L70 62 M98 22 L100 22 L76 62"/>${cabeca(32,48)}<path class="dv-body" d="M32 55 L32 88 M32 64 L72 62 M32 88 L23 126 M32 88 L43 126"/>${solo}${passoDiagramaCalifit(1,84,20)}`;
-      f2=`<path class="dv-equip" d="M86 22 L95 22 L70 62 M98 22 L100 22 L76 62"/>${cabeca(22,67)}<path class="dv-body" d="M29 71 L57 87 L86 122 M57 87 L69 122 M31 72 L73 62"/><path class="dv-arrow" d="M45 49 L66 49 M60 44 l6 5 -6 5"/>${solo}${passoDiagramaCalifit(2,84,20)}`;
-      f3=`<path class="dv-equip" d="M86 22 L95 22 L70 62 M98 22 L100 22 L76 62"/>${cabeca(22,67)}<path class="dv-body" d="M29 71 L57 87 L86 122 M57 87 L69 122 M31 72 L73 62"/><path class="dv-guide" d="M22 67 L86 122"/>${solo}${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`<path class="dv-equip" d="M86 22 L95 22 L70 62 M98 22 L100 22 L76 62"/>${cabeca(32,48)}<path class="dv-body" d="M32 55 L32 88 M32 64 L72 62 M32 88 L23 126 M32 88 L43 126"/>${solo}`;
+      f2=`<path class="dv-equip" d="M86 22 L95 22 L70 62 M98 22 L100 22 L76 62"/>${cabeca(22,67)}<path class="dv-body" d="M29 71 L57 87 L86 122 M57 87 L69 122 M31 72 L73 62"/><path class="dv-arrow" d="M45 49 L66 49 M60 44 l6 5 -6 5"/>${solo}`;
+      f3=`<path class="dv-equip" d="M86 22 L95 22 L70 62 M98 22 L100 22 L76 62"/>${cabeca(22,67)}<path class="dv-body" d="M29 71 L57 87 L86 122 M57 87 L69 122 M31 72 L73 62"/><path class="dv-guide" d="M22 67 L86 122"/>${solo}`;break;
     case 'pike':
-      f1=`${solo}${cabeca(35,84)}<path class="dv-body" d="M42 88 L63 62 L90 125 M42 88 L29 125 M63 62 L50 125"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(28,110)}<path class="dv-body" d="M35 105 L61 64 L90 125 M35 105 L24 125 M61 64 L48 125"/><path class="dv-arrow" d="M17 83 Q28 92 31 106"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(28,110)}<path class="dv-body" d="M35 105 L61 64 L90 125 M35 105 L24 125 M61 64 L48 125"/><path class="dv-guide" d="M24 125 L28 110 L48 125"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(35,84)}<path class="dv-body" d="M42 88 L63 62 L90 125 M42 88 L29 125 M63 62 L50 125"/>`;
+      f2=`${solo}${cabeca(28,110)}<path class="dv-body" d="M35 105 L61 64 L90 125 M35 105 L24 125 M61 64 L48 125"/><path class="dv-arrow" d="M17 83 Q28 92 31 106"/>`;
+      f3=`${solo}${cabeca(28,110)}<path class="dv-body" d="M35 105 L61 64 L90 125 M35 105 L24 125 M61 64 L48 125"/><path class="dv-guide" d="M24 125 L28 110 L48 125"/>`;break;
     case 'pistol':
-      f1=`<line class="dv-equip" x1="92" y1="28" x2="92" y2="126"/><line class="dv-equip" x1="92" y1="55" x2="63" y2="67"/>${cabeca(47,46)}<path class="dv-body" d="M47 53 L47 84 M47 63 L64 67 M47 84 L39 124 M47 84 L82 95"/>${solo}${passoDiagramaCalifit(1,84,20)}`;
-      f2=`<line class="dv-equip" x1="92" y1="28" x2="92" y2="126"/><line class="dv-equip" x1="92" y1="55" x2="64" y2="73"/>${cabeca(38,66)}<path class="dv-body" d="M38 73 L50 94 M38 80 L64 73 M50 94 L32 124 M50 94 L86 98"/><path class="dv-arrow" d="M22 80 L22 103 M17 97 l5 6 5 -6"/>${solo}${passoDiagramaCalifit(2,84,20)}`;
-      f3=`<line class="dv-equip" x1="92" y1="28" x2="92" y2="126"/><line class="dv-equip" x1="92" y1="55" x2="64" y2="73"/>${cabeca(38,66)}<path class="dv-body" d="M38 73 L50 94 M38 80 L64 73 M50 94 L32 124 M50 94 L86 98"/><path class="dv-guide" d="M32 124 L50 94 L86 98"/>${solo}${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`<line class="dv-equip" x1="92" y1="28" x2="92" y2="126"/><line class="dv-equip" x1="92" y1="55" x2="63" y2="67"/>${cabeca(47,46)}<path class="dv-body" d="M47 53 L47 84 M47 63 L64 67 M47 84 L39 124 M47 84 L82 95"/>${solo}`;
+      f2=`<line class="dv-equip" x1="92" y1="28" x2="92" y2="126"/><line class="dv-equip" x1="92" y1="55" x2="64" y2="73"/>${cabeca(38,66)}<path class="dv-body" d="M38 73 L50 94 M38 80 L64 73 M50 94 L32 124 M50 94 L86 98"/><path class="dv-arrow" d="M22 80 L22 103 M17 97 l5 6 5 -6"/>${solo}`;
+      f3=`<line class="dv-equip" x1="92" y1="28" x2="92" y2="126"/><line class="dv-equip" x1="92" y1="55" x2="64" y2="73"/>${cabeca(38,66)}<path class="dv-body" d="M38 73 L50 94 M38 80 L64 73 M50 94 L32 124 M50 94 L86 98"/><path class="dv-guide" d="M32 124 L50 94 L86 98"/>${solo}`;break;
     case 'mini_walk':
-      f1=`${solo}${cabeca(50,47)}<path class="dv-body" d="M50 54 L50 84 M50 62 L36 72 M50 62 L64 72 M50 84 L41 124 M50 84 L59 124"/><line class="dv-band" x1="41" y1="96" x2="59" y2="96"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(50,50)}<path class="dv-body" d="M50 57 L50 85 M50 64 L36 74 M50 64 L64 74 M50 85 L31 124 M50 85 L70 124"/><line class="dv-band" x1="36" y1="98" x2="64" y2="98"/><path class="dv-arrow" d="M27 109 L11 109 M16 104 l-6 5 6 5"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(58,50)}<path class="dv-body" d="M58 57 L58 85 M58 64 L44 74 M58 64 L72 74 M58 85 L47 124 M58 85 L68 124"/><line class="dv-band" x1="48" y1="98" x2="68" y2="98"/><path class="dv-arrow" d="M18 109 L40 109 M34 104 l6 5 -6 5"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(50,47)}<path class="dv-body" d="M50 54 L50 84 M50 62 L36 72 M50 62 L64 72 M50 84 L41 124 M50 84 L59 124"/><line class="dv-band" x1="41" y1="96" x2="59" y2="96"/>`;
+      f2=`${solo}${cabeca(50,50)}<path class="dv-body" d="M50 57 L50 85 M50 64 L36 74 M50 64 L64 74 M50 85 L31 124 M50 85 L70 124"/><line class="dv-band" x1="36" y1="98" x2="64" y2="98"/><path class="dv-arrow" d="M27 109 L11 109 M16 104 l-6 5 6 5"/>`;
+      f3=`${solo}${cabeca(58,50)}<path class="dv-body" d="M58 57 L58 85 M58 64 L44 74 M58 64 L72 74 M58 85 L47 124 M58 85 L68 124"/><line class="dv-band" x1="48" y1="98" x2="68" y2="98"/><path class="dv-arrow" d="M18 109 L40 109 M34 104 l6 5 -6 5"/>`;break;
     case 'mini_abduction':
-      f1=`${solo}${cabeca(50,43)}<path class="dv-body" d="M50 50 L50 84 M50 60 L36 73 M50 60 L64 73 M50 84 L41 124 M50 84 L59 124"/><line class="dv-band" x1="42" y1="94" x2="58" y2="94"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(43,43)}<path class="dv-body" d="M43 50 L43 84 M43 60 L30 72 M43 60 L56 72 M43 84 L36 124 M43 84 L82 114"/><line class="dv-band" x1="36" y1="94" x2="68" y2="102"/><path class="dv-arrow" d="M65 88 L88 88 M82 83 l6 5 -6 5"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(43,43)}<path class="dv-body" d="M43 50 L43 84 M43 60 L30 72 M43 60 L56 72 M43 84 L36 124 M43 84 L82 114"/><path class="dv-guide" d="M43 45 L43 124"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(50,43)}<path class="dv-body" d="M50 50 L50 84 M50 60 L36 73 M50 60 L64 73 M50 84 L41 124 M50 84 L59 124"/><line class="dv-band" x1="42" y1="94" x2="58" y2="94"/>`;
+      f2=`${solo}${cabeca(43,43)}<path class="dv-body" d="M43 50 L43 84 M43 60 L30 72 M43 60 L56 72 M43 84 L36 124 M43 84 L82 114"/><line class="dv-band" x1="36" y1="94" x2="68" y2="102"/><path class="dv-arrow" d="M65 88 L88 88 M82 83 l6 5 -6 5"/>`;
+      f3=`${solo}${cabeca(43,43)}<path class="dv-body" d="M43 50 L43 84 M43 60 L30 72 M43 60 L56 72 M43 84 L36 124 M43 84 L82 114"/><path class="dv-guide" d="M43 45 L43 124"/>`;break;
     case 'external_rotation':
-      f1=`${cabeca(49,42)}<path class="dv-body" d="M49 49 L49 87 M49 60 L34 72 M49 60 L64 72 M49 87 L40 125 M49 87 L58 125 M34 72 L50 74"/><line class="dv-band" x1="50" y1="74" x2="95" y2="74"/>${solo}${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${cabeca(49,42)}<path class="dv-body" d="M49 49 L49 87 M49 60 L34 72 M49 60 L64 72 M49 87 L40 125 M49 87 L58 125 M34 72 L21 61"/><line class="dv-band" x1="21" y1="61" x2="95" y2="74"/><path class="dv-arrow" d="M29 82 Q18 73 20 61"/>${solo}${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${cabeca(49,42)}<path class="dv-body" d="M49 49 L49 87 M49 60 L34 72 M49 60 L64 72 M49 87 L40 125 M49 87 L58 125 M34 72 L21 61"/><circle class="dv-anchor" cx="34" cy="72" r="4"/>${solo}${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${cabeca(49,42)}<path class="dv-body" d="M49 49 L49 87 M49 60 L34 72 M49 60 L64 72 M49 87 L40 125 M49 87 L58 125 M34 72 L50 74"/><line class="dv-band" x1="50" y1="74" x2="95" y2="74"/>${solo}`;
+      f2=`${cabeca(49,42)}<path class="dv-body" d="M49 49 L49 87 M49 60 L34 72 M49 60 L64 72 M49 87 L40 125 M49 87 L58 125 M34 72 L21 61"/><line class="dv-band" x1="21" y1="61" x2="95" y2="74"/><path class="dv-arrow" d="M29 82 Q18 73 20 61"/>${solo}`;
+      f3=`${cabeca(49,42)}<path class="dv-body" d="M49 49 L49 87 M49 60 L34 72 M49 60 L64 72 M49 87 L40 125 M49 87 L58 125 M34 72 L21 61"/><circle class="dv-anchor" cx="34" cy="72" r="4"/>${solo}`;break;
     case 'pull_up':
-      f1=`<line class="dv-equip" x1="11" y1="31" x2="91" y2="31"/>${cabeca(50,66)}<path class="dv-body" d="M50 73 L50 101 M50 79 L29 33 M50 79 L71 33 M50 101 L40 130 M50 101 L60 130"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`<line class="dv-equip" x1="11" y1="31" x2="91" y2="31"/>${cabeca(50,50)}<path class="dv-body" d="M50 57 L50 87 M50 66 L34 45 M50 66 L66 45 M50 87 L40 119 M50 87 L60 119"/><path class="dv-arrow" d="M86 87 L86 55 M81 61 l5 -6 5 6"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`<line class="dv-equip" x1="11" y1="31" x2="91" y2="31"/>${cabeca(50,50)}<path class="dv-body" d="M50 57 L50 87 M50 66 L34 45 M50 66 L66 45 M50 87 L40 119 M50 87 L60 119"/><path class="dv-accent" d="M39 63 Q50 72 61 63"/><path class="dv-guide" d="M34 45 L50 66 L66 45"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`<line class="dv-equip" x1="11" y1="31" x2="91" y2="31"/>${cabeca(50,66)}<path class="dv-body" d="M50 73 L50 101 M50 79 L29 33 M50 79 L71 33 M50 101 L40 130 M50 101 L60 130"/>`;
+      f2=`<line class="dv-equip" x1="11" y1="31" x2="91" y2="31"/>${cabeca(50,50)}<path class="dv-body" d="M50 57 L50 87 M50 66 L34 45 M50 66 L66 45 M50 87 L40 119 M50 87 L60 119"/><path class="dv-arrow" d="M86 87 L86 55 M81 61 l5 -6 5 6"/>`;
+      f3=`<line class="dv-equip" x1="11" y1="31" x2="91" y2="31"/>${cabeca(50,50)}<path class="dv-body" d="M50 57 L50 87 M50 66 L34 45 M50 66 L66 45 M50 87 L40 119 M50 87 L60 119"/><path class="dv-accent" d="M39 63 Q50 72 61 63"/><path class="dv-guide" d="M34 45 L50 66 L66 45"/>`;break;
     case 'inverted_row':
-      f1=`<line class="dv-equip" x1="75" y1="31" x2="96" y2="31"/>${solo}${cabeca(21,95)}<path class="dv-body" d="M28 99 L57 108 L90 124 M40 103 L73 32 M57 108 L68 124"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`<line class="dv-equip" x1="75" y1="31" x2="96" y2="31"/>${solo}${cabeca(38,75)}<path class="dv-body" d="M45 79 L65 96 L90 124 M53 84 L82 32 M65 96 L74 124"/><path class="dv-arrow" d="M23 65 L40 65 M34 60 l6 5 -6 5"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`<line class="dv-equip" x1="75" y1="31" x2="96" y2="31"/>${solo}${cabeca(38,75)}<path class="dv-body" d="M45 79 L65 96 L90 124 M53 84 L82 32 M65 96 L74 124"/><path class="dv-guide" d="M38 75 L90 124"/><path class="dv-accent" d="M44 82 Q53 88 62 83"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`<line class="dv-equip" x1="75" y1="31" x2="96" y2="31"/>${solo}${cabeca(21,95)}<path class="dv-body" d="M28 99 L57 108 L90 124 M40 103 L73 32 M57 108 L68 124"/>`;
+      f2=`<line class="dv-equip" x1="75" y1="31" x2="96" y2="31"/>${solo}${cabeca(38,75)}<path class="dv-body" d="M45 79 L65 96 L90 124 M53 84 L82 32 M65 96 L74 124"/><path class="dv-arrow" d="M23 65 L40 65 M34 60 l6 5 -6 5"/>`;
+      f3=`<line class="dv-equip" x1="75" y1="31" x2="96" y2="31"/>${solo}${cabeca(38,75)}<path class="dv-body" d="M45 79 L65 96 L90 124 M53 84 L82 32 M65 96 L74 124"/><path class="dv-guide" d="M38 75 L90 124"/><path class="dv-accent" d="M44 82 Q53 88 62 83"/>`;break;
     case 'face_pull':
-      f1=`<line class="dv-equip" x1="92" y1="36" x2="92" y2="126"/><line class="dv-band" x1="92" y1="62" x2="59" y2="65"/>${cabeca(40,48)}<path class="dv-body" d="M40 55 L40 90 M40 65 L59 65 M40 90 L31 126 M40 90 L50 126"/>${solo}${passoDiagramaCalifit(1,84,20)}`;
-      f2=`<line class="dv-equip" x1="92" y1="36" x2="92" y2="126"/><line class="dv-band" x1="92" y1="62" x2="55" y2="53"/>${cabeca(40,48)}<path class="dv-body" d="M40 55 L40 90 M40 65 L55 53 M55 53 L66 64 M40 90 L31 126 M40 90 L50 126"/><path class="dv-arrow" d="M74 45 L56 45 M62 40 l-6 5 6 5"/>${solo}${passoDiagramaCalifit(2,84,20)}`;
-      f3=`<line class="dv-equip" x1="92" y1="36" x2="92" y2="126"/><line class="dv-band" x1="92" y1="62" x2="55" y2="53"/>${cabeca(40,48)}<path class="dv-body" d="M40 55 L40 90 M40 65 L55 53 M55 53 L66 64 M40 90 L31 126 M40 90 L50 126"/><path class="dv-accent" d="M29 63 Q40 72 51 63"/>${solo}${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`<line class="dv-equip" x1="92" y1="36" x2="92" y2="126"/><line class="dv-band" x1="92" y1="62" x2="59" y2="65"/>${cabeca(40,48)}<path class="dv-body" d="M40 55 L40 90 M40 65 L59 65 M40 90 L31 126 M40 90 L50 126"/>${solo}`;
+      f2=`<line class="dv-equip" x1="92" y1="36" x2="92" y2="126"/><line class="dv-band" x1="92" y1="62" x2="55" y2="53"/>${cabeca(40,48)}<path class="dv-body" d="M40 55 L40 90 M40 65 L55 53 M55 53 L66 64 M40 90 L31 126 M40 90 L50 126"/><path class="dv-arrow" d="M74 45 L56 45 M62 40 l-6 5 6 5"/>${solo}`;
+      f3=`<line class="dv-equip" x1="92" y1="36" x2="92" y2="126"/><line class="dv-band" x1="92" y1="62" x2="55" y2="53"/>${cabeca(40,48)}<path class="dv-body" d="M40 55 L40 90 M40 65 L55 53 M55 53 L66 64 M40 90 L31 126 M40 90 L50 126"/><path class="dv-accent" d="M29 63 Q40 72 51 63"/>${solo}`;break;
     case 'ring_push':
-      f1=`<path class="dv-equip" d="M20 22 L35 70 M82 22 L67 70"/>${cabeca(50,44)}<path class="dv-body" d="M50 51 L50 84 M50 62 L35 70 M50 62 L67 70 M50 84 L40 125 M50 84 L60 125"/>${solo}${passoDiagramaCalifit(1,84,20)}`;
-      f2=`<path class="dv-equip" d="M20 22 L38 78 M82 22 L64 78"/>${cabeca(50,63)}<path class="dv-body" d="M50 70 L50 96 M50 80 L38 78 M50 80 L64 78 M50 96 L40 125 M50 96 L60 125"/><path class="dv-arrow" d="M84 53 L84 75 M79 69 l5 6 5 -6"/>${solo}${passoDiagramaCalifit(2,84,20)}`;
-      f3=`<path class="dv-equip" d="M20 22 L38 78 M82 22 L64 78"/>${cabeca(50,63)}<path class="dv-body" d="M50 70 L50 96 M50 80 L38 78 M50 80 L64 78 M50 96 L40 125 M50 96 L60 125"/><path class="dv-guide" d="M50 63 L50 125"/><circle class="dv-anchor" cx="38" cy="78" r="3"/><circle class="dv-anchor" cx="64" cy="78" r="3"/>${solo}${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`<path class="dv-equip" d="M20 22 L35 70 M82 22 L67 70"/>${cabeca(50,44)}<path class="dv-body" d="M50 51 L50 84 M50 62 L35 70 M50 62 L67 70 M50 84 L40 125 M50 84 L60 125"/>${solo}`;
+      f2=`<path class="dv-equip" d="M20 22 L38 78 M82 22 L64 78"/>${cabeca(50,63)}<path class="dv-body" d="M50 70 L50 96 M50 80 L38 78 M50 80 L64 78 M50 96 L40 125 M50 96 L60 125"/><path class="dv-arrow" d="M84 53 L84 75 M79 69 l5 6 5 -6"/>${solo}`;
+      f3=`<path class="dv-equip" d="M20 22 L38 78 M82 22 L64 78"/>${cabeca(50,63)}<path class="dv-body" d="M50 70 L50 96 M50 80 L38 78 M50 80 L64 78 M50 96 L40 125 M50 96 L60 125"/><path class="dv-guide" d="M50 63 L50 125"/><circle class="dv-anchor" cx="38" cy="78" r="3"/><circle class="dv-anchor" cx="64" cy="78" r="3"/>${solo}`;break;
     case 'kb_swing':
-      f1=`${solo}${cabeca(38,48)}<path class="dv-body" d="M38 55 L58 78 M58 78 L45 123 M58 78 L70 123 M45 66 L65 96"/><circle class="dv-accent" cx="69" cy="101" r="6"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(50,39)}<path class="dv-body" d="M50 46 L50 82 M50 58 L77 72 M50 82 L40 123 M50 82 L60 123"/><circle class="dv-accent" cx="82" cy="73" r="6"/><path class="dv-arrow" d="M70 105 Q92 86 85 66"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(50,39)}<path class="dv-body" d="M50 46 L50 82 M50 58 L77 72 M50 82 L40 123 M50 82 L60 123"/><circle class="dv-accent" cx="82" cy="73" r="6"/><path class="dv-guide" d="M50 39 L50 123"/><path class="dv-accent" d="M42 80 Q50 87 58 80"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(38,48)}<path class="dv-body" d="M38 55 L58 78 M58 78 L45 123 M58 78 L70 123 M45 66 L65 96"/><circle class="dv-accent" cx="69" cy="101" r="6"/>`;
+      f2=`${solo}${cabeca(50,39)}<path class="dv-body" d="M50 46 L50 82 M50 58 L77 72 M50 82 L40 123 M50 82 L60 123"/><circle class="dv-accent" cx="82" cy="73" r="6"/><path class="dv-arrow" d="M70 105 Q92 86 85 66"/>`;
+      f3=`${solo}${cabeca(50,39)}<path class="dv-body" d="M50 46 L50 82 M50 58 L77 72 M50 82 L40 123 M50 82 L60 123"/><circle class="dv-accent" cx="82" cy="73" r="6"/><path class="dv-guide" d="M50 39 L50 123"/><path class="dv-accent" d="M42 80 Q50 87 58 80"/>`;break;
     case 'squat':
-      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 83 M50 60 L35 72 M50 60 L65 72 M50 83 L40 124 M50 83 L60 124"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(43,68)}<path class="dv-body" d="M43 75 L57 94 M43 82 L30 91 M43 82 L58 91 M57 94 L35 124 M57 94 L78 124"/><path class="dv-arrow" d="M20 70 L20 99 M15 93 l5 6 5 -6"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(43,68)}<path class="dv-body" d="M43 75 L57 94 M43 82 L30 91 M43 82 L58 91 M57 94 L35 124 M57 94 L78 124"/><path class="dv-guide" d="M35 124 L57 94 L78 124"/><circle class="dv-anchor" cx="35" cy="124" r="3"/><circle class="dv-anchor" cx="78" cy="124" r="3"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 83 M50 60 L35 72 M50 60 L65 72 M50 83 L40 124 M50 83 L60 124"/>`;
+      f2=`${solo}${cabeca(43,68)}<path class="dv-body" d="M43 75 L57 94 M43 82 L30 91 M43 82 L58 91 M57 94 L35 124 M57 94 L78 124"/><path class="dv-arrow" d="M20 70 L20 99 M15 93 l5 6 5 -6"/>`;
+      f3=`${solo}${cabeca(43,68)}<path class="dv-body" d="M43 75 L57 94 M43 82 L30 91 M43 82 L58 91 M57 94 L35 124 M57 94 L78 124"/><path class="dv-guide" d="M35 124 L57 94 L78 124"/><circle class="dv-anchor" cx="35" cy="124" r="3"/><circle class="dv-anchor" cx="78" cy="124" r="3"/>`;break;
     case 'lunge':
-      f1=`${solo}${cabeca(47,42)}<path class="dv-body" d="M47 49 L47 82 M47 60 L34 72 M47 60 L60 72 M47 82 L28 124 M47 82 L77 124"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(47,58)}<path class="dv-body" d="M47 65 L47 92 M47 74 L34 84 M47 74 L60 84 M47 92 L27 124 M47 92 L77 124"/><path class="dv-arrow" d="M88 68 L88 96 M83 90 l5 6 5 -6"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(47,58)}<path class="dv-body" d="M47 65 L47 92 M47 74 L34 84 M47 74 L60 84 M47 92 L27 124 M47 92 L77 124"/><path class="dv-guide" d="M27 124 L47 92 L77 124"/><circle class="dv-anchor" cx="27" cy="124" r="3"/><circle class="dv-anchor" cx="77" cy="124" r="3"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(47,42)}<path class="dv-body" d="M47 49 L47 82 M47 60 L34 72 M47 60 L60 72 M47 82 L28 124 M47 82 L77 124"/>`;
+      f2=`${solo}${cabeca(47,58)}<path class="dv-body" d="M47 65 L47 92 M47 74 L34 84 M47 74 L60 84 M47 92 L27 124 M47 92 L77 124"/><path class="dv-arrow" d="M88 68 L88 96 M83 90 l5 6 5 -6"/>`;
+      f3=`${solo}${cabeca(47,58)}<path class="dv-body" d="M47 65 L47 92 M47 74 L34 84 M47 74 L60 84 M47 92 L27 124 M47 92 L77 124"/><path class="dv-guide" d="M27 124 L47 92 L77 124"/><circle class="dv-anchor" cx="27" cy="124" r="3"/><circle class="dv-anchor" cx="77" cy="124" r="3"/>`;break;
     case 'bulgarian':
-      f1=`<rect class="dv-equip" x="75" y="100" width="20" height="26" rx="3"/>${solo}${cabeca(42,43)}<path class="dv-body" d="M42 50 L42 82 M42 61 L30 72 M42 61 L55 72 M42 82 L30 124 M42 82 L82 101"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`<rect class="dv-equip" x="75" y="100" width="20" height="26" rx="3"/>${solo}${cabeca(42,62)}<path class="dv-body" d="M42 69 L47 94 M42 78 L30 88 M42 78 L55 88 M47 94 L29 124 M47 94 L82 101"/><path class="dv-arrow" d="M15 69 L15 99 M10 93 l5 6 5 -6"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`<rect class="dv-equip" x="75" y="100" width="20" height="26" rx="3"/>${solo}${cabeca(42,62)}<path class="dv-body" d="M42 69 L47 94 M42 78 L30 88 M42 78 L55 88 M47 94 L29 124 M47 94 L82 101"/><path class="dv-guide" d="M29 124 L47 94 L82 101"/><circle class="dv-anchor" cx="29" cy="124" r="3"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`<rect class="dv-equip" x="75" y="100" width="20" height="26" rx="3"/>${solo}${cabeca(42,43)}<path class="dv-body" d="M42 50 L42 82 M42 61 L30 72 M42 61 L55 72 M42 82 L30 124 M42 82 L82 101"/>`;
+      f2=`<rect class="dv-equip" x="75" y="100" width="20" height="26" rx="3"/>${solo}${cabeca(42,62)}<path class="dv-body" d="M42 69 L47 94 M42 78 L30 88 M42 78 L55 88 M47 94 L29 124 M47 94 L82 101"/><path class="dv-arrow" d="M15 69 L15 99 M10 93 l5 6 5 -6"/>`;
+      f3=`<rect class="dv-equip" x="75" y="100" width="20" height="26" rx="3"/>${solo}${cabeca(42,62)}<path class="dv-body" d="M42 69 L47 94 M42 78 L30 88 M42 78 L55 88 M47 94 L29 124 M47 94 L82 101"/><path class="dv-guide" d="M29 124 L47 94 L82 101"/><circle class="dv-anchor" cx="29" cy="124" r="3"/>`;break;
     case 'glute_bridge':
-      f1=`${solo}${cabeca(20,112)}<path class="dv-body" d="M27 115 L54 115 M54 115 L72 96 M72 96 L88 124 M54 115 L45 124"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(20,105)}<path class="dv-body" d="M27 108 L55 93 L72 96 M72 96 L88 124 M55 93 L45 124"/><path class="dv-arrow" d="M57 115 L57 91 M52 97 l5 -6 5 6"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(20,105)}<path class="dv-body" d="M27 108 L55 93 L72 96 M72 96 L88 124 M55 93 L45 124"/><path class="dv-guide" d="M20 105 L72 96"/><path class="dv-accent" d="M47 96 Q55 88 63 95"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(20,112)}<path class="dv-body" d="M27 115 L54 115 M54 115 L72 96 M72 96 L88 124 M54 115 L45 124"/>`;
+      f2=`${solo}${cabeca(20,105)}<path class="dv-body" d="M27 108 L55 93 L72 96 M72 96 L88 124 M55 93 L45 124"/><path class="dv-arrow" d="M57 115 L57 91 M52 97 l5 -6 5 6"/>`;
+      f3=`${solo}${cabeca(20,105)}<path class="dv-body" d="M27 108 L55 93 L72 96 M72 96 L88 124 M55 93 L45 124"/><path class="dv-guide" d="M20 105 L72 96"/><path class="dv-accent" d="M47 96 Q55 88 63 95"/>`;break;
     case 'pushup':
-      f1=`${solo}${cabeca(20,91)}<path class="dv-body" d="M27 95 L57 105 L90 122 M39 99 L34 126 M57 105 L64 126"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(18,111)}<path class="dv-body" d="M25 114 L56 117 L90 122 M37 115 L34 126 M56 117 L64 126"/><path class="dv-arrow" d="M13 84 L13 108 M8 102 l5 6 5 -6"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(18,111)}<path class="dv-body" d="M25 114 L56 117 L90 122 M37 115 L34 126 M56 117 L64 126"/><path class="dv-guide" d="M18 111 L90 122"/><circle class="dv-anchor" cx="34" cy="126" r="3"/><circle class="dv-anchor" cx="64" cy="126" r="3"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(20,91)}<path class="dv-body" d="M27 95 L57 105 L90 122 M39 99 L34 126 M57 105 L64 126"/>`;
+      f2=`${solo}${cabeca(18,111)}<path class="dv-body" d="M25 114 L56 117 L90 122 M37 115 L34 126 M56 117 L64 126"/><path class="dv-arrow" d="M13 84 L13 108 M8 102 l5 6 5 -6"/>`;
+      f3=`${solo}${cabeca(18,111)}<path class="dv-body" d="M25 114 L56 117 L90 122 M37 115 L34 126 M56 117 L64 126"/><path class="dv-guide" d="M18 111 L90 122"/><circle class="dv-anchor" cx="34" cy="126" r="3"/><circle class="dv-anchor" cx="64" cy="126" r="3"/>`;break;
     case 'cossack':
-      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 82 M50 60 L35 72 M50 60 L65 72 M50 82 L30 124 M50 82 L75 124"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(34,67)}<path class="dv-body" d="M34 74 L47 94 M34 82 L20 91 M34 82 L49 91 M47 94 L25 124 M47 94 L90 118"/><path class="dv-arrow" d="M70 60 L48 60 M54 55 l-6 5 6 5"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(34,67)}<path class="dv-body" d="M34 74 L47 94 M34 82 L20 91 M34 82 L49 91 M47 94 L25 124 M47 94 L90 118"/><path class="dv-guide" d="M25 124 L47 94 L90 118"/><circle class="dv-anchor" cx="25" cy="124" r="3"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 82 M50 60 L35 72 M50 60 L65 72 M50 82 L30 124 M50 82 L75 124"/>`;
+      f2=`${solo}${cabeca(34,67)}<path class="dv-body" d="M34 74 L47 94 M34 82 L20 91 M34 82 L49 91 M47 94 L25 124 M47 94 L90 118"/><path class="dv-arrow" d="M70 60 L48 60 M54 55 l-6 5 6 5"/>`;
+      f3=`${solo}${cabeca(34,67)}<path class="dv-body" d="M34 74 L47 94 M34 82 L20 91 M34 82 L49 91 M47 94 L25 124 M47 94 L90 118"/><path class="dv-guide" d="M25 124 L47 94 L90 118"/><circle class="dv-anchor" cx="25" cy="124" r="3"/>`;break;
     case 'hanging_leg_raise':
-      f1=`<line class="dv-equip" x1="11" y1="31" x2="91" y2="31"/>${cabeca(50,57)}<path class="dv-body" d="M50 64 L50 94 M50 70 L29 33 M50 70 L71 33 M50 94 L43 127 M50 94 L57 127"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`<line class="dv-equip" x1="11" y1="31" x2="91" y2="31"/>${cabeca(50,57)}<path class="dv-body" d="M50 64 L50 94 M50 70 L29 33 M50 70 L71 33 M50 94 L29 95 M50 94 L71 95"/><path class="dv-arrow" d="M80 118 Q91 99 76 86"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`<line class="dv-equip" x1="11" y1="31" x2="91" y2="31"/>${cabeca(50,57)}<path class="dv-body" d="M50 64 L50 94 M50 70 L29 33 M50 70 L71 33 M50 94 L29 95 M50 94 L71 95"/><path class="dv-accent" d="M42 91 Q50 99 58 91"/><path class="dv-guide" d="M29 95 L71 95"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`<line class="dv-equip" x1="11" y1="31" x2="91" y2="31"/>${cabeca(50,57)}<path class="dv-body" d="M50 64 L50 94 M50 70 L29 33 M50 70 L71 33 M50 94 L43 127 M50 94 L57 127"/>`;
+      f2=`<line class="dv-equip" x1="11" y1="31" x2="91" y2="31"/>${cabeca(50,57)}<path class="dv-body" d="M50 64 L50 94 M50 70 L29 33 M50 70 L71 33 M50 94 L29 95 M50 94 L71 95"/><path class="dv-arrow" d="M80 118 Q91 99 76 86"/>`;
+      f3=`<line class="dv-equip" x1="11" y1="31" x2="91" y2="31"/>${cabeca(50,57)}<path class="dv-body" d="M50 64 L50 94 M50 70 L29 33 M50 70 L71 33 M50 94 L29 95 M50 94 L71 95"/><path class="dv-accent" d="M42 91 Q50 99 58 91"/><path class="dv-guide" d="M29 95 L71 95"/>`;break;
     case 'wall_sit':
-      f1=`<line class="dv-equip" x1="25" y1="28" x2="25" y2="126"/>${solo}${cabeca(43,45)}<path class="dv-body" d="M43 52 L43 84 M43 61 L55 72 M43 61 L31 72 M43 84 L34 124 M43 84 L54 124"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`<line class="dv-equip" x1="25" y1="28" x2="25" y2="126"/>${solo}${cabeca(38,65)}<path class="dv-body" d="M38 72 L38 96 M38 80 L52 88 M38 80 L27 88 M38 96 L62 96 M62 96 L78 124"/><path class="dv-arrow" d="M88 66 L88 94 M83 88 l5 6 5 -6"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`<line class="dv-equip" x1="25" y1="28" x2="25" y2="126"/>${solo}${cabeca(38,65)}<path class="dv-body" d="M38 72 L38 96 M38 80 L52 88 M38 80 L27 88 M38 96 L62 96 M62 96 L78 124"/><path class="dv-guide" d="M38 72 L38 96 L62 96"/><circle class="dv-anchor" cx="78" cy="124" r="3"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`<line class="dv-equip" x1="25" y1="28" x2="25" y2="126"/>${solo}${cabeca(43,45)}<path class="dv-body" d="M43 52 L43 84 M43 61 L55 72 M43 61 L31 72 M43 84 L34 124 M43 84 L54 124"/>`;
+      f2=`<line class="dv-equip" x1="25" y1="28" x2="25" y2="126"/>${solo}${cabeca(38,65)}<path class="dv-body" d="M38 72 L38 96 M38 80 L52 88 M38 80 L27 88 M38 96 L62 96 M62 96 L78 124"/><path class="dv-arrow" d="M88 66 L88 94 M83 88 l5 6 5 -6"/>`;
+      f3=`<line class="dv-equip" x1="25" y1="28" x2="25" y2="126"/>${solo}${cabeca(38,65)}<path class="dv-body" d="M38 72 L38 96 M38 80 L52 88 M38 80 L27 88 M38 96 L62 96 M62 96 L78 124"/><path class="dv-guide" d="M38 72 L38 96 L62 96"/><circle class="dv-anchor" cx="78" cy="124" r="3"/>`;break;
     case 'thoracic_mobility':
-      f1=`${solo}${cabeca(32,47)}<path class="dv-body" d="M32 54 L32 88 M32 64 L18 76 M32 64 L47 76 M32 88 L23 124 M32 88 L42 124"/><rect class="dv-equip" x="63" y="54" width="8" height="58" rx="2"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(32,47)}<path class="dv-body" d="M32 54 L32 88 M32 64 L18 76 M32 64 L55 66 M32 88 L23 124 M32 88 L42 124"/><rect class="dv-equip" x="63" y="54" width="8" height="58" rx="2"/><path class="dv-arrow" d="M45 46 Q61 55 56 72"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(32,47)}<path class="dv-body" d="M32 54 L32 88 M32 64 L18 76 M32 64 L55 66 M32 88 L23 124 M32 88 L42 124"/><rect class="dv-equip" x="63" y="54" width="8" height="58" rx="2"/><path class="dv-guide" d="M32 54 L32 124"/><circle class="dv-anchor" cx="32" cy="88" r="3"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(32,47)}<path class="dv-body" d="M32 54 L32 88 M32 64 L18 76 M32 64 L47 76 M32 88 L23 124 M32 88 L42 124"/><rect class="dv-equip" x="63" y="54" width="8" height="58" rx="2"/>`;
+      f2=`${solo}${cabeca(32,47)}<path class="dv-body" d="M32 54 L32 88 M32 64 L18 76 M32 64 L55 66 M32 88 L23 124 M32 88 L42 124"/><rect class="dv-equip" x="63" y="54" width="8" height="58" rx="2"/><path class="dv-arrow" d="M45 46 Q61 55 56 72"/>`;
+      f3=`${solo}${cabeca(32,47)}<path class="dv-body" d="M32 54 L32 88 M32 64 L18 76 M32 64 L55 66 M32 88 L23 124 M32 88 L42 124"/><rect class="dv-equip" x="63" y="54" width="8" height="58" rx="2"/><path class="dv-guide" d="M32 54 L32 124"/><circle class="dv-anchor" cx="32" cy="88" r="3"/>`;break;
     case 'open_book':
-      f1=`${solo}${cabeca(26,104)}<path class="dv-body" d="M33 108 L56 108 L78 108 M56 108 L74 122 M56 108 L74 94"/><path class="dv-equip" d="M42 118 Q56 110 70 118"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(26,104)}<path class="dv-body" d="M33 108 L56 108 L78 90 M56 108 L74 122 M56 108 L74 94"/><path class="dv-arrow" d="M63 83 Q81 73 89 85"/><path class="dv-equip" d="M42 118 Q56 110 70 118"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(26,104)}<path class="dv-body" d="M33 108 L56 108 L78 90 M56 108 L74 122 M56 108 L74 94"/><path class="dv-guide" d="M34 108 L79 90"/><circle class="dv-anchor" cx="56" cy="108" r="3"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(26,104)}<path class="dv-body" d="M33 108 L56 108 L78 108 M56 108 L74 122 M56 108 L74 94"/><path class="dv-equip" d="M42 118 Q56 110 70 118"/>`;
+      f2=`${solo}${cabeca(26,104)}<path class="dv-body" d="M33 108 L56 108 L78 90 M56 108 L74 122 M56 108 L74 94"/><path class="dv-arrow" d="M63 83 Q81 73 89 85"/><path class="dv-equip" d="M42 118 Q56 110 70 118"/>`;
+      f3=`${solo}${cabeca(26,104)}<path class="dv-body" d="M33 108 L56 108 L78 90 M56 108 L74 122 M56 108 L74 94"/><path class="dv-guide" d="M34 108 L79 90"/><circle class="dv-anchor" cx="56" cy="108" r="3"/>`;break;
     case 'shoulder_circles':
-      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L38 73 M50 60 L62 73 M50 87 L41 125 M50 87 L59 125"/><path class="dv-arrow" d="M28 66 Q37 41 60 44"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L34 58 M50 60 L66 58 M50 87 L41 125 M50 87 L59 125"/><path class="dv-arrow" d="M29 77 Q50 18 71 77"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L38 47 M50 60 L62 47 M50 87 L41 125 M50 87 L59 125"/><path class="dv-arrow" d="M72 47 Q61 34 49 35"/><path class="dv-guide" d="M50 49 L50 125"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L38 73 M50 60 L62 73 M50 87 L41 125 M50 87 L59 125"/><path class="dv-arrow" d="M28 66 Q37 41 60 44"/>`;
+      f2=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L34 58 M50 60 L66 58 M50 87 L41 125 M50 87 L59 125"/><path class="dv-arrow" d="M29 77 Q50 18 71 77"/>`;
+      f3=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L38 47 M50 60 L62 47 M50 87 L41 125 M50 87 L59 125"/><path class="dv-arrow" d="M72 47 Q61 34 49 35"/><path class="dv-guide" d="M50 49 L50 125"/>`;break;
     case 'shoulder_pass_through':
-      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L32 72 M50 60 L68 72 M50 87 L41 125 M50 87 L59 125"/><path class="dv-equip" d="M28 72 L72 72"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L38 45 M50 60 L62 45 M50 87 L41 125 M50 87 L59 125"/><path class="dv-equip" d="M35 44 L65 44"/><path class="dv-arrow" d="M24 75 Q50 18 76 75"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L42 42 M50 60 L58 42 M50 87 L41 125 M50 87 L59 125"/><path class="dv-equip" d="M38 40 L62 40"/><path class="dv-arrow" d="M74 50 Q86 65 74 82"/><path class="dv-guide" d="M50 49 L50 125"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L32 72 M50 60 L68 72 M50 87 L41 125 M50 87 L59 125"/><path class="dv-equip" d="M28 72 L72 72"/>`;
+      f2=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L38 45 M50 60 L62 45 M50 87 L41 125 M50 87 L59 125"/><path class="dv-equip" d="M35 44 L65 44"/><path class="dv-arrow" d="M24 75 Q50 18 76 75"/>`;
+      f3=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L42 42 M50 60 L58 42 M50 87 L41 125 M50 87 L59 125"/><path class="dv-equip" d="M38 40 L62 40"/><path class="dv-arrow" d="M74 50 Q86 65 74 82"/><path class="dv-guide" d="M50 49 L50 125"/>`;break;
     case 'wall_slide_mobility':
-      f1=`${solo}${cabeca(32,42)}<path class="dv-body" d="M32 49 L32 87 M32 60 L46 72 M32 60 L46 50 M32 87 L23 125 M32 87 L41 125"/><rect class="dv-equip" x="63" y="40" width="8" height="88" rx="2"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(32,42)}<path class="dv-body" d="M32 49 L32 87 M32 60 L49 58 M32 60 L49 42 M32 87 L23 125 M32 87 L41 125"/><rect class="dv-equip" x="63" y="40" width="8" height="88" rx="2"/><path class="dv-arrow" d="M54 74 L54 45 M49 51 l5 -6 5 6"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(32,42)}<path class="dv-body" d="M32 49 L32 87 M32 60 L49 58 M32 60 L49 42 M32 87 L23 125 M32 87 L41 125"/><rect class="dv-equip" x="63" y="40" width="8" height="88" rx="2"/><path class="dv-guide" d="M49 42 L49 58"/><path class="dv-accent" d="M32 49 L63 49"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(32,42)}<path class="dv-body" d="M32 49 L32 87 M32 60 L46 72 M32 60 L46 50 M32 87 L23 125 M32 87 L41 125"/><rect class="dv-equip" x="63" y="40" width="8" height="88" rx="2"/>`;
+      f2=`${solo}${cabeca(32,42)}<path class="dv-body" d="M32 49 L32 87 M32 60 L49 58 M32 60 L49 42 M32 87 L23 125 M32 87 L41 125"/><rect class="dv-equip" x="63" y="40" width="8" height="88" rx="2"/><path class="dv-arrow" d="M54 74 L54 45 M49 51 l5 -6 5 6"/>`;
+      f3=`${solo}${cabeca(32,42)}<path class="dv-body" d="M32 49 L32 87 M32 60 L49 58 M32 60 L49 42 M32 87 L23 125 M32 87 L41 125"/><rect class="dv-equip" x="63" y="40" width="8" height="88" rx="2"/><path class="dv-guide" d="M49 42 L49 58"/><path class="dv-accent" d="M32 49 L63 49"/>`;break;
     case 'shoulder_mobility':
-      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L34 74 M50 60 L66 74 M50 87 L41 125 M50 87 L59 125"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L36 52 M50 60 L64 52 M50 87 L41 125 M50 87 L59 125"/><path class="dv-arrow" d="M30 77 Q50 24 70 77"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L36 52 M50 60 L64 52 M50 87 L41 125 M50 87 L59 125"/><path class="dv-guide" d="M50 49 L50 125"/><path class="dv-accent" d="M36 52 Q50 40 64 52"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L34 74 M50 60 L66 74 M50 87 L41 125 M50 87 L59 125"/>`;
+      f2=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L36 52 M50 60 L64 52 M50 87 L41 125 M50 87 L59 125"/><path class="dv-arrow" d="M30 77 Q50 24 70 77"/>`;
+      f3=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L36 52 M50 60 L64 52 M50 87 L41 125 M50 87 L59 125"/><path class="dv-guide" d="M50 49 L50 125"/><path class="dv-accent" d="M36 52 Q50 40 64 52"/>`;break;
     case 'cat_cow':
-      f1=`${solo}${cabeca(24,83)}<path class="dv-body" d="M31 87 C40 80, 50 80, 58 87 M38 89 L33 125 M57 88 L63 125 M57 88 L82 125"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(24,90)}<path class="dv-body" d="M31 94 C40 104, 50 104, 58 94 M38 96 L33 125 M57 95 L63 125 M57 95 L82 125"/><path class="dv-arrow" d="M66 76 Q52 64 38 76"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(24,76)}<path class="dv-body" d="M31 80 C40 68, 50 68, 58 80 M38 82 L33 125 M57 81 L63 125 M57 81 L82 125"/><path class="dv-arrow" d="M38 71 Q52 61 66 71"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(24,83)}<path class="dv-body" d="M31 87 C40 80, 50 80, 58 87 M38 89 L33 125 M57 88 L63 125 M57 88 L82 125"/>`;
+      f2=`${solo}${cabeca(24,90)}<path class="dv-body" d="M31 94 C40 104, 50 104, 58 94 M38 96 L33 125 M57 95 L63 125 M57 95 L82 125"/><path class="dv-arrow" d="M66 76 Q52 64 38 76"/>`;
+      f3=`${solo}${cabeca(24,76)}<path class="dv-body" d="M31 80 C40 68, 50 68, 58 80 M38 82 L33 125 M57 81 L63 125 M57 81 L82 125"/><path class="dv-arrow" d="M38 71 Q52 61 66 71"/>`;break;
     case 'breathing':
-      f1=`${solo}${cabeca(26,104)}<path class="dv-body" d="M33 108 L56 108 L78 108 M56 108 L73 120 M56 108 L73 96"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(26,104)}<path class="dv-body" d="M33 108 L56 108 L78 108 M56 108 L73 120 M56 108 L73 96"/><path class="dv-accent" d="M39 115 Q56 124 73 115"/><path class="dv-arrow" d="M56 118 Q66 106 78 118"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(26,104)}<path class="dv-body" d="M33 108 L56 108 L78 108 M56 108 L73 120 M56 108 L73 96"/><path class="dv-guide" d="M37 108 L75 108"/><circle class="dv-anchor" cx="56" cy="108" r="3"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(26,104)}<path class="dv-body" d="M33 108 L56 108 L78 108 M56 108 L73 120 M56 108 L73 96"/>`;
+      f2=`${solo}${cabeca(26,104)}<path class="dv-body" d="M33 108 L56 108 L78 108 M56 108 L73 120 M56 108 L73 96"/><path class="dv-accent" d="M39 115 Q56 124 73 115"/><path class="dv-arrow" d="M56 118 Q66 106 78 118"/>`;
+      f3=`${solo}${cabeca(26,104)}<path class="dv-body" d="M33 108 L56 108 L78 108 M56 108 L73 120 M56 108 L73 96"/><path class="dv-guide" d="M37 108 L75 108"/><circle class="dv-anchor" cx="56" cy="108" r="3"/>`;break;
     case 'ankle_mobility':
-      f1=`${solo}<path class="dv-body" d="M45 40 L45 83 M45 56 L30 67 M45 56 L60 67 M45 83 L45 124 M45 124 L76 124"/>${cabeca(45,33)}${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}<path class="dv-body" d="M52 40 L52 83 M52 56 L37 67 M52 56 L67 67 M52 83 L45 124 M45 124 L76 124"/>${cabeca(52,33)}<path class="dv-arrow" d="M59 88 Q68 76 73 67"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}<path class="dv-body" d="M52 40 L52 83 M52 56 L37 67 M52 56 L67 67 M52 83 L45 124 M45 124 L76 124"/>${cabeca(52,33)}<circle class="dv-anchor" cx="45" cy="124" r="3"/><path class="dv-guide" d="M45 124 L76 124"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}<path class="dv-body" d="M45 40 L45 83 M45 56 L30 67 M45 56 L60 67 M45 83 L45 124 M45 124 L76 124"/>${cabeca(45,33)}`;
+      f2=`${solo}<path class="dv-body" d="M52 40 L52 83 M52 56 L37 67 M52 56 L67 67 M52 83 L45 124 M45 124 L76 124"/>${cabeca(52,33)}<path class="dv-arrow" d="M59 88 Q68 76 73 67"/>`;
+      f3=`${solo}<path class="dv-body" d="M52 40 L52 83 M52 56 L37 67 M52 56 L67 67 M52 83 L45 124 M45 124 L76 124"/>${cabeca(52,33)}<circle class="dv-anchor" cx="45" cy="124" r="3"/><path class="dv-guide" d="M45 124 L76 124"/>`;break;
     case 'dumbbell_press':
-      f1=`${solo}${cabeca(19,112)}<path class="dv-body" d="M26 115 L55 115 M40 115 L40 95 M55 115 L74 95"/><circle class="dv-accent" cx="40" cy="89" r="4"/><circle class="dv-accent" cx="74" cy="89" r="4"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(19,112)}<path class="dv-body" d="M26 115 L55 115 M40 115 L40 72 M55 115 L74 72"/><circle class="dv-accent" cx="40" cy="66" r="4"/><circle class="dv-accent" cx="74" cy="66" r="4"/><path class="dv-arrow" d="M84 91 L84 67 M79 73 l5 -6 5 6"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(19,112)}<path class="dv-body" d="M26 115 L55 115 M40 115 L40 72 M55 115 L74 72"/><circle class="dv-accent" cx="40" cy="66" r="4"/><circle class="dv-accent" cx="74" cy="66" r="4"/><path class="dv-guide" d="M40 66 L40 115 M74 66 L74 115"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(19,112)}<path class="dv-body" d="M26 115 L55 115 M40 115 L40 95 M55 115 L74 95"/><circle class="dv-accent" cx="40" cy="89" r="4"/><circle class="dv-accent" cx="74" cy="89" r="4"/>`;
+      f2=`${solo}${cabeca(19,112)}<path class="dv-body" d="M26 115 L55 115 M40 115 L40 72 M55 115 L74 72"/><circle class="dv-accent" cx="40" cy="66" r="4"/><circle class="dv-accent" cx="74" cy="66" r="4"/><path class="dv-arrow" d="M84 91 L84 67 M79 73 l5 -6 5 6"/>`;
+      f3=`${solo}${cabeca(19,112)}<path class="dv-body" d="M26 115 L55 115 M40 115 L40 72 M55 115 L74 72"/><circle class="dv-accent" cx="40" cy="66" r="4"/><circle class="dv-accent" cx="74" cy="66" r="4"/><path class="dv-guide" d="M40 66 L40 115 M74 66 L74 115"/>`;break;
     case 'shoulder_press':
-      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 61 L36 72 M50 61 L64 72 M50 87 L41 125 M50 87 L59 125"/><circle class="dv-accent" cx="34" cy="72" r="4"/><circle class="dv-accent" cx="66" cy="72" r="4"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L42 42 M50 60 L58 42 M50 87 L41 125 M50 87 L59 125"/><circle class="dv-accent" cx="41" cy="36" r="4"/><circle class="dv-accent" cx="59" cy="36" r="4"/><path class="dv-arrow" d="M83 86 L83 46 M78 52 l5 -6 5 6"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L42 42 M50 60 L58 42 M50 87 L41 125 M50 87 L59 125"/><circle class="dv-accent" cx="41" cy="36" r="4"/><circle class="dv-accent" cx="59" cy="36" r="4"/><path class="dv-guide" d="M50 49 L50 125"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 61 L36 72 M50 61 L64 72 M50 87 L41 125 M50 87 L59 125"/><circle class="dv-accent" cx="34" cy="72" r="4"/><circle class="dv-accent" cx="66" cy="72" r="4"/>`;
+      f2=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L42 42 M50 60 L58 42 M50 87 L41 125 M50 87 L59 125"/><circle class="dv-accent" cx="41" cy="36" r="4"/><circle class="dv-accent" cx="59" cy="36" r="4"/><path class="dv-arrow" d="M83 86 L83 46 M78 52 l5 -6 5 6"/>`;
+      f3=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L42 42 M50 60 L58 42 M50 87 L41 125 M50 87 L59 125"/><circle class="dv-accent" cx="41" cy="36" r="4"/><circle class="dv-accent" cx="59" cy="36" r="4"/><path class="dv-guide" d="M50 49 L50 125"/>`;break;
     case 'one_arm_row':
-      f1=`${solo}${cabeca(42,44)}<path class="dv-body" d="M42 51 L58 78 M58 78 L48 124 M58 78 L70 124 M58 66 L77 72"/><circle class="dv-accent" cx="82" cy="74" r="4"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(42,44)}<path class="dv-body" d="M42 51 L58 78 M58 78 L48 124 M58 78 L70 124 M58 66 L68 61"/><circle class="dv-accent" cx="73" cy="60" r="4"/><path class="dv-arrow" d="M88 82 L72 66 M73 74 l-3 -8 8 2"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(42,44)}<path class="dv-body" d="M42 51 L58 78 M58 78 L48 124 M58 78 L70 124 M58 66 L68 61"/><circle class="dv-accent" cx="73" cy="60" r="4"/><path class="dv-guide" d="M42 51 L70 124"/><circle class="dv-anchor" cx="48" cy="124" r="3"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(42,44)}<path class="dv-body" d="M42 51 L58 78 M58 78 L48 124 M58 78 L70 124 M58 66 L77 72"/><circle class="dv-accent" cx="82" cy="74" r="4"/>`;
+      f2=`${solo}${cabeca(42,44)}<path class="dv-body" d="M42 51 L58 78 M58 78 L48 124 M58 78 L70 124 M58 66 L68 61"/><circle class="dv-accent" cx="73" cy="60" r="4"/><path class="dv-arrow" d="M88 82 L72 66 M73 74 l-3 -8 8 2"/>`;
+      f3=`${solo}${cabeca(42,44)}<path class="dv-body" d="M42 51 L58 78 M58 78 L48 124 M58 78 L70 124 M58 66 L68 61"/><circle class="dv-accent" cx="73" cy="60" r="4"/><path class="dv-guide" d="M42 51 L70 124"/><circle class="dv-anchor" cx="48" cy="124" r="3"/>`;break;
     case 'carry_hold':
-      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L36 72 M50 60 L64 72 M50 87 L41 125 M50 87 L59 125"/><circle class="dv-accent" cx="30" cy="78" r="5"/><circle class="dv-accent" cx="70" cy="78" r="5"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L36 72 M50 60 L64 72 M50 87 L41 125 M50 87 L59 125"/><circle class="dv-accent" cx="30" cy="78" r="5"/><circle class="dv-accent" cx="70" cy="78" r="5"/><path class="dv-arrow" d="M82 86 Q92 66 82 47"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L36 72 M50 60 L64 72 M50 87 L41 125 M50 87 L59 125"/><circle class="dv-accent" cx="30" cy="78" r="5"/><circle class="dv-accent" cx="70" cy="78" r="5"/><path class="dv-guide" d="M50 49 L50 125"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L36 72 M50 60 L64 72 M50 87 L41 125 M50 87 L59 125"/><circle class="dv-accent" cx="30" cy="78" r="5"/><circle class="dv-accent" cx="70" cy="78" r="5"/>`;
+      f2=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L36 72 M50 60 L64 72 M50 87 L41 125 M50 87 L59 125"/><circle class="dv-accent" cx="30" cy="78" r="5"/><circle class="dv-accent" cx="70" cy="78" r="5"/><path class="dv-arrow" d="M82 86 Q92 66 82 47"/>`;
+      f3=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L36 72 M50 60 L64 72 M50 87 L41 125 M50 87 L59 125"/><circle class="dv-accent" cx="30" cy="78" r="5"/><circle class="dv-accent" cx="70" cy="78" r="5"/><path class="dv-guide" d="M50 49 L50 125"/>`;break;
     case 'bear_crawl_vis':
-      f1=`${solo}${cabeca(25,82)}<path class="dv-body" d="M31 86 L57 92 M38 88 L33 124 M57 92 L64 124 M57 92 L82 118"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(31,82)}<path class="dv-body" d="M37 86 L63 92 M44 88 L39 124 M63 92 L70 124 M63 92 L88 118"/><path class="dv-arrow" d="M18 108 L36 108 M30 103 l6 5 -6 5"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(37,82)}<path class="dv-body" d="M43 86 L69 92 M50 88 L45 124 M69 92 L76 124 M69 92 L94 118"/><path class="dv-guide" d="M43 86 L94 118"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(25,82)}<path class="dv-body" d="M31 86 L57 92 M38 88 L33 124 M57 92 L64 124 M57 92 L82 118"/>`;
+      f2=`${solo}${cabeca(31,82)}<path class="dv-body" d="M37 86 L63 92 M44 88 L39 124 M63 92 L70 124 M63 92 L88 118"/><path class="dv-arrow" d="M18 108 L36 108 M30 103 l6 5 -6 5"/>`;
+      f3=`${solo}${cabeca(37,82)}<path class="dv-body" d="M43 86 L69 92 M50 88 L45 124 M69 92 L76 124 M69 92 L94 118"/><path class="dv-guide" d="M43 86 L94 118"/>`;break;
     case 'burpee_vis':
-      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 85 M50 60 L36 72 M50 60 L64 72 M50 85 L41 124 M50 85 L59 124"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(36,88)}<path class="dv-body" d="M42 92 L58 100 M42 92 L30 124 M58 100 L82 124"/><path class="dv-arrow" d="M74 80 Q84 96 82 116"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(50,35)}<path class="dv-body" d="M50 42 L50 78 M50 56 L35 44 M50 56 L65 44 M50 78 L40 118 M50 78 L60 118"/><path class="dv-arrow" d="M82 96 L82 62 M77 68 l5 -6 5 6"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 85 M50 60 L36 72 M50 60 L64 72 M50 85 L41 124 M50 85 L59 124"/>`;
+      f2=`${solo}${cabeca(36,88)}<path class="dv-body" d="M42 92 L58 100 M42 92 L30 124 M58 100 L82 124"/><path class="dv-arrow" d="M74 80 Q84 96 82 116"/>`;
+      f3=`${solo}${cabeca(50,35)}<path class="dv-body" d="M50 42 L50 78 M50 56 L35 44 M50 56 L65 44 M50 78 L40 118 M50 78 L60 118"/><path class="dv-arrow" d="M82 96 L82 62 M77 68 l5 -6 5 6"/>`;break;
     case 'knee_pushup_vis':
-      f1=`${solo}${cabeca(24,88)}<path class="dv-body" d="M30 92 L55 98 L78 110 M38 94 L34 126 M55 98 L63 126"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(22,108)}<path class="dv-body" d="M28 112 L55 114 L78 116 M38 113 L34 126 M55 114 L63 126"/><path class="dv-arrow" d="M15 84 L15 106 M10 100 l5 6 5 -6"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(22,108)}<path class="dv-body" d="M28 112 L55 114 L78 116 M38 113 L34 126 M55 114 L63 126"/><path class="dv-guide" d="M28 112 L78 116"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(24,88)}<path class="dv-body" d="M30 92 L55 98 L78 110 M38 94 L34 126 M55 98 L63 126"/>`;
+      f2=`${solo}${cabeca(22,108)}<path class="dv-body" d="M28 112 L55 114 L78 116 M38 113 L34 126 M55 114 L63 126"/><path class="dv-arrow" d="M15 84 L15 106 M10 100 l5 6 5 -6"/>`;
+      f3=`${solo}${cabeca(22,108)}<path class="dv-body" d="M28 112 L55 114 L78 116 M38 113 L34 126 M55 114 L63 126"/><path class="dv-guide" d="M28 112 L78 116"/>`;break;
     case 'incline_pushup_vis':
-      f1=`${solo}<rect class="dv-equip" x="76" y="78" width="18" height="48" rx="3"/>${cabeca(28,72)}<path class="dv-body" d="M34 76 L58 88 L78 92 M44 81 L77 80 M58 88 L70 124"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}<rect class="dv-equip" x="76" y="78" width="18" height="48" rx="3"/>${cabeca(38,82)}<path class="dv-body" d="M44 86 L62 96 L78 99 M52 90 L77 80 M62 96 L70 124"/><path class="dv-arrow" d="M22 67 L34 80"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}<rect class="dv-equip" x="76" y="78" width="18" height="48" rx="3"/>${cabeca(38,82)}<path class="dv-body" d="M44 86 L62 96 L78 99 M52 90 L77 80 M62 96 L70 124"/><path class="dv-guide" d="M38 82 L78 99"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}<rect class="dv-equip" x="76" y="78" width="18" height="48" rx="3"/>${cabeca(28,72)}<path class="dv-body" d="M34 76 L58 88 L78 92 M44 81 L77 80 M58 88 L70 124"/>`;
+      f2=`${solo}<rect class="dv-equip" x="76" y="78" width="18" height="48" rx="3"/>${cabeca(38,82)}<path class="dv-body" d="M44 86 L62 96 L78 99 M52 90 L77 80 M62 96 L70 124"/><path class="dv-arrow" d="M22 67 L34 80"/>`;
+      f3=`${solo}<rect class="dv-equip" x="76" y="78" width="18" height="48" rx="3"/>${cabeca(38,82)}<path class="dv-body" d="M44 86 L62 96 L78 99 M52 90 L77 80 M62 96 L70 124"/><path class="dv-guide" d="M38 82 L78 99"/>`;break;
     case 'decline_pushup_vis':
-      f1=`${solo}<rect class="dv-equip" x="10" y="92" width="22" height="34" rx="3"/>${cabeca(76,82)}<path class="dv-body" d="M70 86 L50 96 L28 100 M60 91 L80 124 M50 96 L42 124"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}<rect class="dv-equip" x="10" y="92" width="22" height="34" rx="3"/>${cabeca(76,104)}<path class="dv-body" d="M70 108 L50 108 L28 100 M60 108 L80 124 M50 108 L42 124"/><path class="dv-arrow" d="M88 78 L88 102 M83 96 l5 6 5 -6"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}<rect class="dv-equip" x="10" y="92" width="22" height="34" rx="3"/>${cabeca(76,104)}<path class="dv-body" d="M70 108 L50 108 L28 100 M60 108 L80 124 M50 108 L42 124"/><path class="dv-guide" d="M28 100 L76 104"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}<rect class="dv-equip" x="10" y="92" width="22" height="34" rx="3"/>${cabeca(76,82)}<path class="dv-body" d="M70 86 L50 96 L28 100 M60 91 L80 124 M50 96 L42 124"/>`;
+      f2=`${solo}<rect class="dv-equip" x="10" y="92" width="22" height="34" rx="3"/>${cabeca(76,104)}<path class="dv-body" d="M70 108 L50 108 L28 100 M60 108 L80 124 M50 108 L42 124"/><path class="dv-arrow" d="M88 78 L88 102 M83 96 l5 6 5 -6"/>`;
+      f3=`${solo}<rect class="dv-equip" x="10" y="92" width="22" height="34" rx="3"/>${cabeca(76,104)}<path class="dv-body" d="M70 108 L50 108 L28 100 M60 108 L80 124 M50 108 L42 124"/><path class="dv-guide" d="M28 100 L76 104"/>`;break;
     case 'handstand_hold_vis':
-      f1=`${solo}${cabeca(50,114)}<path class="dv-body" d="M50 108 L50 72 M50 96 L38 84 M50 96 L62 84 M50 72 L42 34 M50 72 L58 34"/><rect class="dv-equip" x="78" y="22" width="7" height="104" rx="2"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(58,114)}<path class="dv-body" d="M58 108 L58 72 M58 96 L46 84 M58 96 L70 84 M58 72 L50 34 M58 72 L66 34"/><rect class="dv-equip" x="78" y="22" width="7" height="104" rx="2"/><path class="dv-arrow" d="M36 94 Q44 78 55 72"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(58,114)}<path class="dv-body" d="M58 108 L58 72 M58 96 L46 84 M58 96 L70 84 M58 72 L50 34 M58 72 L66 34"/><rect class="dv-equip" x="78" y="22" width="7" height="104" rx="2"/><path class="dv-guide" d="M58 34 L58 114"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(50,114)}<path class="dv-body" d="M50 108 L50 72 M50 96 L38 84 M50 96 L62 84 M50 72 L42 34 M50 72 L58 34"/><rect class="dv-equip" x="78" y="22" width="7" height="104" rx="2"/>`;
+      f2=`${solo}${cabeca(58,114)}<path class="dv-body" d="M58 108 L58 72 M58 96 L46 84 M58 96 L70 84 M58 72 L50 34 M58 72 L66 34"/><rect class="dv-equip" x="78" y="22" width="7" height="104" rx="2"/><path class="dv-arrow" d="M36 94 Q44 78 55 72"/>`;
+      f3=`${solo}${cabeca(58,114)}<path class="dv-body" d="M58 108 L58 72 M58 96 L46 84 M58 96 L70 84 M58 72 L50 34 M58 72 L66 34"/><rect class="dv-equip" x="78" y="22" width="7" height="104" rx="2"/><path class="dv-guide" d="M58 34 L58 114"/>`;break;
     case 'handstand_pushup_vis':
-      f1=`${solo}${cabeca(58,114)}<path class="dv-body" d="M58 108 L58 72 M58 96 L46 84 M58 96 L70 84 M58 72 L50 34 M58 72 L66 34"/><rect class="dv-equip" x="78" y="22" width="7" height="104" rx="2"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(58,98)}<path class="dv-body" d="M58 92 L58 60 M58 82 L46 88 M58 82 L70 88 M58 60 L50 30 M58 60 L66 30"/><rect class="dv-equip" x="78" y="22" width="7" height="104" rx="2"/><path class="dv-arrow" d="M34 104 L34 82 M29 88 l5 -6 5 6"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(58,98)}<path class="dv-body" d="M58 92 L58 60 M58 82 L46 88 M58 82 L70 88 M58 60 L50 30 M58 60 L66 30"/><rect class="dv-equip" x="78" y="22" width="7" height="104" rx="2"/><path class="dv-guide" d="M58 30 L58 98"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(58,114)}<path class="dv-body" d="M58 108 L58 72 M58 96 L46 84 M58 96 L70 84 M58 72 L50 34 M58 72 L66 34"/><rect class="dv-equip" x="78" y="22" width="7" height="104" rx="2"/>`;
+      f2=`${solo}${cabeca(58,98)}<path class="dv-body" d="M58 92 L58 60 M58 82 L46 88 M58 82 L70 88 M58 60 L50 30 M58 60 L66 30"/><rect class="dv-equip" x="78" y="22" width="7" height="104" rx="2"/><path class="dv-arrow" d="M34 104 L34 82 M29 88 l5 -6 5 6"/>`;
+      f3=`${solo}${cabeca(58,98)}<path class="dv-body" d="M58 92 L58 60 M58 82 L46 88 M58 82 L70 88 M58 60 L50 30 M58 60 L66 30"/><rect class="dv-equip" x="78" y="22" width="7" height="104" rx="2"/><path class="dv-guide" d="M58 30 L58 98"/>`;break;
     case 'single_leg_bridge_vis':
-      f1=`${solo}${cabeca(20,112)}<path class="dv-body" d="M27 115 L54 115 M54 115 L72 96 M72 96 L88 124 M54 115 L45 124"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(20,105)}<path class="dv-body" d="M27 108 L55 93 L72 96 M72 96 L88 124 M55 93 L82 82"/><path class="dv-arrow" d="M57 115 L57 91 M52 97 l5 -6 5 6"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(20,105)}<path class="dv-body" d="M27 108 L55 93 L72 96 M72 96 L88 124 M55 93 L82 82"/><path class="dv-guide" d="M20 105 L72 96"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(20,112)}<path class="dv-body" d="M27 115 L54 115 M54 115 L72 96 M72 96 L88 124 M54 115 L45 124"/>`;
+      f2=`${solo}${cabeca(20,105)}<path class="dv-body" d="M27 108 L55 93 L72 96 M72 96 L88 124 M55 93 L82 82"/><path class="dv-arrow" d="M57 115 L57 91 M52 97 l5 -6 5 6"/>`;
+      f3=`${solo}${cabeca(20,105)}<path class="dv-body" d="M27 108 L55 93 L72 96 M72 96 L88 124 M55 93 L82 82"/><path class="dv-guide" d="M20 105 L72 96"/>`;break;
     case 'ab_wheel_vis':
-      f1=`${solo}${cabeca(34,66)}<path class="dv-body" d="M40 70 L56 92 M56 92 L48 124 M56 92 L76 104 M40 80 L76 104"/><circle class="dv-accent" cx="82" cy="108" r="6"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(22,78)}<path class="dv-body" d="M28 82 L56 98 M56 98 L48 124 M56 98 L88 108 M28 88 L88 108"/><circle class="dv-accent" cx="94" cy="112" r="6"/><path class="dv-arrow" d="M69 87 L91 99"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(22,78)}<path class="dv-body" d="M28 82 L56 98 M56 98 L48 124 M56 98 L88 108 M28 88 L88 108"/><circle class="dv-accent" cx="94" cy="112" r="6"/><path class="dv-guide" d="M28 82 L94 112"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(34,66)}<path class="dv-body" d="M40 70 L56 92 M56 92 L48 124 M56 92 L76 104 M40 80 L76 104"/><circle class="dv-accent" cx="82" cy="108" r="6"/>`;
+      f2=`${solo}${cabeca(22,78)}<path class="dv-body" d="M28 82 L56 98 M56 98 L48 124 M56 98 L88 108 M28 88 L88 108"/><circle class="dv-accent" cx="94" cy="112" r="6"/><path class="dv-arrow" d="M69 87 L91 99"/>`;
+      f3=`${solo}${cabeca(22,78)}<path class="dv-body" d="M28 82 L56 98 M56 98 L48 124 M56 98 L88 108 M28 88 L88 108"/><circle class="dv-accent" cx="94" cy="112" r="6"/><path class="dv-guide" d="M28 82 L94 112"/>`;break;
     case 'scapular_retraction_vis':
-      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L35 72 M50 60 L65 72 M50 87 L41 125 M50 87 L59 125"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L39 68 M50 60 L61 68 M50 87 L41 125 M50 87 L59 125"/><path class="dv-arrow" d="M31 58 L43 62 M69 58 L57 62"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L39 68 M50 60 L61 68 M50 87 L41 125 M50 87 L59 125"/><path class="dv-accent" d="M41 63 Q50 69 59 63"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L35 72 M50 60 L65 72 M50 87 L41 125 M50 87 L59 125"/>`;
+      f2=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L39 68 M50 60 L61 68 M50 87 L41 125 M50 87 L59 125"/><path class="dv-arrow" d="M31 58 L43 62 M69 58 L57 62"/>`;
+      f3=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L39 68 M50 60 L61 68 M50 87 L41 125 M50 87 L59 125"/><path class="dv-accent" d="M41 63 Q50 69 59 63"/>`;break;
     case 'scapular_pushup_vis':
-      f1=`${solo}${cabeca(24,84)}<path class="dv-body" d="M30 88 L54 88 L80 88 M30 88 L30 108 M80 88 L80 108"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(24,88)}<path class="dv-body" d="M30 92 L54 92 L80 92 M30 92 L30 108 M80 92 L80 108"/><path class="dv-arrow" d="M52 72 L52 88 M47 82 l5 6 5 -6"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(24,80)}<path class="dv-body" d="M30 84 L54 84 L80 84 M30 84 L30 108 M80 84 L80 108"/><path class="dv-arrow" d="M52 96 L52 80 M47 86 l5 -6 5 6"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(24,84)}<path class="dv-body" d="M30 88 L54 88 L80 88 M30 88 L30 108 M80 88 L80 108"/>`;
+      f2=`${solo}${cabeca(24,88)}<path class="dv-body" d="M30 92 L54 92 L80 92 M30 92 L30 108 M80 92 L80 108"/><path class="dv-arrow" d="M52 72 L52 88 M47 82 l5 6 5 -6"/>`;
+      f3=`${solo}${cabeca(24,80)}<path class="dv-body" d="M30 84 L54 84 L80 84 M30 84 L30 108 M80 84 L80 108"/><path class="dv-arrow" d="M52 96 L52 80 M47 86 l5 -6 5 6"/>`;break;
     case 'stepup_vis':
-      f1=`${solo}<rect class="dv-equip" x="62" y="92" width="28" height="34" rx="3"/>${cabeca(40,42)}<path class="dv-body" d="M40 49 L40 86 M40 60 L28 72 M40 60 L52 72 M40 86 L32 124 M40 86 L67 96"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}<rect class="dv-equip" x="62" y="92" width="28" height="34" rx="3"/>${cabeca(55,42)}<path class="dv-body" d="M55 49 L55 86 M55 60 L43 72 M55 60 L67 72 M55 86 L67 96 M55 86 L48 124"/><path class="dv-arrow" d="M30 100 Q42 82 55 80"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}<rect class="dv-equip" x="62" y="92" width="28" height="34" rx="3"/>${cabeca(70,34)}<path class="dv-body" d="M70 41 L70 78 M70 52 L58 64 M70 52 L82 64 M70 78 L65 112 M70 78 L76 112"/><path class="dv-guide" d="M70 41 L70 112"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}<rect class="dv-equip" x="62" y="92" width="28" height="34" rx="3"/>${cabeca(40,42)}<path class="dv-body" d="M40 49 L40 86 M40 60 L28 72 M40 60 L52 72 M40 86 L32 124 M40 86 L67 96"/>`;
+      f2=`${solo}<rect class="dv-equip" x="62" y="92" width="28" height="34" rx="3"/>${cabeca(55,42)}<path class="dv-body" d="M55 49 L55 86 M55 60 L43 72 M55 60 L67 72 M55 86 L67 96 M55 86 L48 124"/><path class="dv-arrow" d="M30 100 Q42 82 55 80"/>`;
+      f3=`${solo}<rect class="dv-equip" x="62" y="92" width="28" height="34" rx="3"/>${cabeca(70,34)}<path class="dv-body" d="M70 41 L70 78 M70 52 L58 64 M70 52 L82 64 M70 78 L65 112 M70 78 L76 112"/><path class="dv-guide" d="M70 41 L70 112"/>`;break;
     case 'stepup_weighted_vis':
-      f1=`${solo}<rect class="dv-equip" x="62" y="92" width="28" height="34" rx="3"/>${cabeca(40,42)}<path class="dv-body" d="M40 49 L40 86 M40 60 L28 72 M40 60 L52 72 M40 86 L32 124 M40 86 L67 96"/><rect class="dv-accent" x="34" y="54" width="12" height="20" rx="3"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}<rect class="dv-equip" x="62" y="92" width="28" height="34" rx="3"/>${cabeca(55,42)}<path class="dv-body" d="M55 49 L55 86 M55 60 L43 72 M55 60 L67 72 M55 86 L67 96 M55 86 L48 124"/><rect class="dv-accent" x="49" y="54" width="12" height="20" rx="3"/><path class="dv-arrow" d="M30 100 Q42 82 55 80"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}<rect class="dv-equip" x="62" y="92" width="28" height="34" rx="3"/>${cabeca(70,34)}<path class="dv-body" d="M70 41 L70 78 M70 52 L58 64 M70 52 L82 64 M70 78 L65 112 M70 78 L76 112"/><rect class="dv-accent" x="64" y="46" width="12" height="20" rx="3"/><path class="dv-guide" d="M70 41 L70 112"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}<rect class="dv-equip" x="62" y="92" width="28" height="34" rx="3"/>${cabeca(40,42)}<path class="dv-body" d="M40 49 L40 86 M40 60 L28 72 M40 60 L52 72 M40 86 L32 124 M40 86 L67 96"/><rect class="dv-accent" x="34" y="54" width="12" height="20" rx="3"/>`;
+      f2=`${solo}<rect class="dv-equip" x="62" y="92" width="28" height="34" rx="3"/>${cabeca(55,42)}<path class="dv-body" d="M55 49 L55 86 M55 60 L43 72 M55 60 L67 72 M55 86 L67 96 M55 86 L48 124"/><rect class="dv-accent" x="49" y="54" width="12" height="20" rx="3"/><path class="dv-arrow" d="M30 100 Q42 82 55 80"/>`;
+      f3=`${solo}<rect class="dv-equip" x="62" y="92" width="28" height="34" rx="3"/>${cabeca(70,34)}<path class="dv-body" d="M70 41 L70 78 M70 52 L58 64 M70 52 L82 64 M70 78 L65 112 M70 78 L76 112"/><rect class="dv-accent" x="64" y="46" width="12" height="20" rx="3"/><path class="dv-guide" d="M70 41 L70 112"/>`;break;
     case 'dips_vis':
-      f1=`${solo}<line class="dv-equip" x1="32" y1="62" x2="32" y2="126"/><line class="dv-equip" x1="68" y1="62" x2="68" y2="126"/>${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L32 66 M50 60 L68 66 M50 87 L42 124 M50 87 L58 124"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}<line class="dv-equip" x1="32" y1="62" x2="32" y2="126"/><line class="dv-equip" x1="68" y1="62" x2="68" y2="126"/>${cabeca(50,58)}<path class="dv-body" d="M50 65 L50 96 M50 76 L32 66 M50 76 L68 66 M50 96 L42 124 M50 96 L58 124"/><path class="dv-arrow" d="M84 54 L84 82 M79 76 l5 6 5 -6"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}<line class="dv-equip" x1="32" y1="62" x2="32" y2="126"/><line class="dv-equip" x1="68" y1="62" x2="68" y2="126"/>${cabeca(50,58)}<path class="dv-body" d="M50 65 L50 96 M50 76 L32 66 M50 76 L68 66 M50 96 L42 124 M50 96 L58 124"/><path class="dv-guide" d="M50 65 L50 124"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}<line class="dv-equip" x1="32" y1="62" x2="32" y2="126"/><line class="dv-equip" x1="68" y1="62" x2="68" y2="126"/>${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L32 66 M50 60 L68 66 M50 87 L42 124 M50 87 L58 124"/>`;
+      f2=`${solo}<line class="dv-equip" x1="32" y1="62" x2="32" y2="126"/><line class="dv-equip" x1="68" y1="62" x2="68" y2="126"/>${cabeca(50,58)}<path class="dv-body" d="M50 65 L50 96 M50 76 L32 66 M50 76 L68 66 M50 96 L42 124 M50 96 L58 124"/><path class="dv-arrow" d="M84 54 L84 82 M79 76 l5 6 5 -6"/>`;
+      f3=`${solo}<line class="dv-equip" x1="32" y1="62" x2="32" y2="126"/><line class="dv-equip" x1="68" y1="62" x2="68" y2="126"/>${cabeca(50,58)}<path class="dv-body" d="M50 65 L50 96 M50 76 L32 66 M50 76 L68 66 M50 96 L42 124 M50 96 L58 124"/><path class="dv-guide" d="M50 65 L50 124"/>`;break;
 
     case 'hollow_hold':
-      f1=`${solo}${cabeca(24,108)}<path class="dv-body" d="M30 112 L52 105 L76 112 M52 105 L64 96 M52 105 L64 114"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(24,101)}<path class="dv-body" d="M30 105 L52 95 L80 105 M52 95 L68 84 M52 95 L68 106"/><path class="dv-arrow" d="M78 117 Q89 101 78 85"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(24,101)}<path class="dv-body" d="M30 105 L52 95 L80 105 M52 95 L68 84 M52 95 L68 106"/><path class="dv-guide" d="M30 105 L80 105"/><circle class="dv-anchor" cx="52" cy="95" r="3"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(24,108)}<path class="dv-body" d="M30 112 L52 105 L76 112 M52 105 L64 96 M52 105 L64 114"/>`;
+      f2=`${solo}${cabeca(24,101)}<path class="dv-body" d="M30 105 L52 95 L80 105 M52 95 L68 84 M52 95 L68 106"/><path class="dv-arrow" d="M78 117 Q89 101 78 85"/>`;
+      f3=`${solo}${cabeca(24,101)}<path class="dv-body" d="M30 105 L52 95 L80 105 M52 95 L68 84 M52 95 L68 106"/><path class="dv-guide" d="M30 105 L80 105"/><circle class="dv-anchor" cx="52" cy="95" r="3"/>`;break;
     case 'hollow_hold_easy':
-      f1=`${solo}${cabeca(24,110)}<path class="dv-body" d="M30 114 L52 108 L71 114 M52 108 L60 99 M52 108 L60 118"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(24,106)}<path class="dv-body" d="M30 110 L52 104 L68 110 M52 104 L60 96 M52 104 L60 114"/><path class="dv-arrow" d="M71 117 Q79 104 71 91"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(24,106)}<path class="dv-body" d="M30 110 L52 104 L68 110 M52 104 L60 96 M52 104 L60 114"/><path class="dv-guide" d="M30 110 L68 110"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(24,110)}<path class="dv-body" d="M30 114 L52 108 L71 114 M52 108 L60 99 M52 108 L60 118"/>`;
+      f2=`${solo}${cabeca(24,106)}<path class="dv-body" d="M30 110 L52 104 L68 110 M52 104 L60 96 M52 104 L60 114"/><path class="dv-arrow" d="M71 117 Q79 104 71 91"/>`;
+      f3=`${solo}${cabeca(24,106)}<path class="dv-body" d="M30 110 L52 104 L68 110 M52 104 L60 96 M52 104 L60 114"/><path class="dv-guide" d="M30 110 L68 110"/>`;break;
     case 'hollow_rock_vis':
-      f1=`${solo}${cabeca(24,107)}<path class="dv-body" d="M30 111 L52 101 L78 111 M52 101 L66 91 M52 101 L66 112"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(24,112)}<path class="dv-body" d="M28 116 L52 105 L80 112 M52 105 L66 97 M52 105 L66 118"/><path class="dv-arrow" d="M20 112 Q28 98 38 103"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(24,102)}<path class="dv-body" d="M32 106 L52 96 L76 106 M52 96 L66 86 M52 96 L66 108"/><path class="dv-arrow" d="M86 102 Q78 88 68 93"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(24,107)}<path class="dv-body" d="M30 111 L52 101 L78 111 M52 101 L66 91 M52 101 L66 112"/>`;
+      f2=`${solo}${cabeca(24,112)}<path class="dv-body" d="M28 116 L52 105 L80 112 M52 105 L66 97 M52 105 L66 118"/><path class="dv-arrow" d="M20 112 Q28 98 38 103"/>`;
+      f3=`${solo}${cabeca(24,102)}<path class="dv-body" d="M32 106 L52 96 L76 106 M52 96 L66 86 M52 96 L66 108"/><path class="dv-arrow" d="M86 102 Q78 88 68 93"/>`;break;
     case 'plank_forearm':
-      f1=`${solo}${cabeca(24,84)}<path class="dv-body" d="M30 88 L54 88 L80 88 M54 88 L72 104 M54 88 L72 72"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(24,84)}<path class="dv-body" d="M30 88 L54 88 L80 88 M54 88 L72 104 M54 88 L72 72"/><path class="dv-arrow" d="M86 104 Q95 88 86 72"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(24,84)}<path class="dv-body" d="M30 88 L54 88 L80 88 M54 88 L72 104 M54 88 L72 72"/><path class="dv-guide" d="M30 88 L80 88"/><circle class="dv-anchor" cx="54" cy="88" r="3"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(24,84)}<path class="dv-body" d="M30 88 L54 88 L80 88 M54 88 L72 104 M54 88 L72 72"/>`;
+      f2=`${solo}${cabeca(24,84)}<path class="dv-body" d="M30 88 L54 88 L80 88 M54 88 L72 104 M54 88 L72 72"/><path class="dv-arrow" d="M86 104 Q95 88 86 72"/>`;
+      f3=`${solo}${cabeca(24,84)}<path class="dv-body" d="M30 88 L54 88 L80 88 M54 88 L72 104 M54 88 L72 72"/><path class="dv-guide" d="M30 88 L80 88"/><circle class="dv-anchor" cx="54" cy="88" r="3"/>`;break;
     case 'plank_short':
-      f1=`${solo}${cabeca(24,90)}<path class="dv-body" d="M30 94 L54 94 L74 94 M54 94 L66 108 M54 94 L66 80"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(24,90)}<path class="dv-body" d="M30 94 L54 94 L74 94 M54 94 L66 108 M54 94 L66 80"/><path class="dv-arrow" d="M80 108 Q88 94 80 80"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(24,90)}<path class="dv-body" d="M30 94 L54 94 L74 94 M54 94 L66 108 M54 94 L66 80"/><path class="dv-guide" d="M30 94 L74 94"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(24,90)}<path class="dv-body" d="M30 94 L54 94 L74 94 M54 94 L66 108 M54 94 L66 80"/>`;
+      f2=`${solo}${cabeca(24,90)}<path class="dv-body" d="M30 94 L54 94 L74 94 M54 94 L66 108 M54 94 L66 80"/><path class="dv-arrow" d="M80 108 Q88 94 80 80"/>`;
+      f3=`${solo}${cabeca(24,90)}<path class="dv-body" d="M30 94 L54 94 L74 94 M54 94 L66 108 M54 94 L66 80"/><path class="dv-guide" d="M30 94 L74 94"/>`;break;
     case 'plank_high_short':
-      f1=`${solo}${cabeca(24,84)}<path class="dv-body" d="M30 88 L54 88 L80 88 M30 88 L30 108 M80 88 L80 108"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(24,84)}<path class="dv-body" d="M30 88 L54 88 L80 88 M30 88 L30 108 M80 88 L80 108"/><path class="dv-arrow" d="M86 104 Q94 88 86 72"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(24,84)}<path class="dv-body" d="M30 88 L54 88 L80 88 M30 88 L30 108 M80 88 L80 108"/><path class="dv-guide" d="M30 88 L80 88"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(24,84)}<path class="dv-body" d="M30 88 L54 88 L80 88 M30 88 L30 108 M80 88 L80 108"/>`;
+      f2=`${solo}${cabeca(24,84)}<path class="dv-body" d="M30 88 L54 88 L80 88 M30 88 L30 108 M80 88 L80 108"/><path class="dv-arrow" d="M86 104 Q94 88 86 72"/>`;
+      f3=`${solo}${cabeca(24,84)}<path class="dv-body" d="M30 88 L54 88 L80 88 M30 88 L30 108 M80 88 L80 108"/><path class="dv-guide" d="M30 88 L80 88"/>`;break;
     case 'situp_vis':
-      f1=`${solo}${cabeca(24,111)}<path class="dv-body" d="M30 115 L54 115 L76 115 M54 115 L66 103 M54 115 L66 122"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(38,86)}<path class="dv-body" d="M44 90 L52 115 M52 115 L76 115 M52 115 L64 124 M52 103 L39 112"/><path class="dv-arrow" d="M70 94 Q58 79 45 79"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(42,72)}<path class="dv-body" d="M48 76 L54 115 M54 115 L76 115 M54 115 L64 124 M54 101 L42 108"/><path class="dv-guide" d="M48 76 L54 115"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(24,111)}<path class="dv-body" d="M30 115 L54 115 L76 115 M54 115 L66 103 M54 115 L66 122"/>`;
+      f2=`${solo}${cabeca(38,86)}<path class="dv-body" d="M44 90 L52 115 M52 115 L76 115 M52 115 L64 124 M52 103 L39 112"/><path class="dv-arrow" d="M70 94 Q58 79 45 79"/>`;
+      f3=`${solo}${cabeca(42,72)}<path class="dv-body" d="M48 76 L54 115 M54 115 L76 115 M54 115 L64 124 M54 101 L42 108"/><path class="dv-guide" d="M48 76 L54 115"/>`;break;
     case 'vup_vis':
-      f1=`${solo}${cabeca(24,114)}<path class="dv-body" d="M30 118 L54 118 L78 118 M54 118 L66 106 M54 118 L66 125"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(50,74)}<path class="dv-body" d="M50 78 L54 98 M54 98 L72 120 M54 98 L72 76 M54 98 L36 76"/><path class="dv-arrow" d="M30 107 Q41 95 47 87"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(54,62)}<path class="dv-body" d="M54 66 L56 92 M56 92 L73 118 M56 92 L73 66 M56 92 L39 66"/><path class="dv-guide" d="M39 66 L73 66"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(24,114)}<path class="dv-body" d="M30 118 L54 118 L78 118 M54 118 L66 106 M54 118 L66 125"/>`;
+      f2=`${solo}${cabeca(50,74)}<path class="dv-body" d="M50 78 L54 98 M54 98 L72 120 M54 98 L72 76 M54 98 L36 76"/><path class="dv-arrow" d="M30 107 Q41 95 47 87"/>`;
+      f3=`${solo}${cabeca(54,62)}<path class="dv-body" d="M54 66 L56 92 M56 92 L73 118 M56 92 L73 66 M56 92 L39 66"/><path class="dv-guide" d="M39 66 L73 66"/>`;break;
     case 'mountain_climber_vis':
-      f1=`${solo}${cabeca(24,84)}<path class="dv-body" d="M30 88 L54 88 L80 88 M30 88 L30 108 M80 88 L72 116"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(24,84)}<path class="dv-body" d="M30 88 L54 88 L80 88 M30 88 L40 108 M80 88 L72 116"/><path class="dv-arrow" d="M46 114 Q55 101 61 92"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(24,84)}<path class="dv-body" d="M30 88 L54 88 L80 88 M30 88 L30 116 M80 88 L62 104"/><path class="dv-arrow" d="M68 116 Q58 100 52 93"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(24,84)}<path class="dv-body" d="M30 88 L54 88 L80 88 M30 88 L30 108 M80 88 L72 116"/>`;
+      f2=`${solo}${cabeca(24,84)}<path class="dv-body" d="M30 88 L54 88 L80 88 M30 88 L40 108 M80 88 L72 116"/><path class="dv-arrow" d="M46 114 Q55 101 61 92"/>`;
+      f3=`${solo}${cabeca(24,84)}<path class="dv-body" d="M30 88 L54 88 L80 88 M30 88 L30 116 M80 88 L62 104"/><path class="dv-arrow" d="M68 116 Q58 100 52 93"/>`;break;
     case 'mountain_climber_fast':
-      f1=`${solo}${cabeca(24,84)}<path class="dv-body" d="M30 88 L54 88 L80 88 M30 88 L34 112 M80 88 L70 116"/><path class="dv-arrow" d="M18 82 Q26 72 36 82"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(24,84)}<path class="dv-body" d="M30 88 L54 88 L80 88 M30 88 L44 106 M80 88 L70 116"/><path class="dv-arrow" d="M46 114 Q55 101 61 92"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(24,84)}<path class="dv-body" d="M30 88 L54 88 L80 88 M30 88 L34 116 M80 88 L60 102"/><path class="dv-arrow" d="M68 116 Q58 100 52 93"/><path class="dv-arrow" d="M90 82 Q82 72 72 82"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(24,84)}<path class="dv-body" d="M30 88 L54 88 L80 88 M30 88 L34 112 M80 88 L70 116"/><path class="dv-arrow" d="M18 82 Q26 72 36 82"/>`;
+      f2=`${solo}${cabeca(24,84)}<path class="dv-body" d="M30 88 L54 88 L80 88 M30 88 L44 106 M80 88 L70 116"/><path class="dv-arrow" d="M46 114 Q55 101 61 92"/>`;
+      f3=`${solo}${cabeca(24,84)}<path class="dv-body" d="M30 88 L54 88 L80 88 M30 88 L34 116 M80 88 L60 102"/><path class="dv-arrow" d="M68 116 Q58 100 52 93"/><path class="dv-arrow" d="M90 82 Q82 72 72 82"/>`;break;
     case 'low_band_row':
-      f1=`${solo}${cabeca(34,84)}<path class="dv-body" d="M40 88 L58 88 L78 88 M58 88 L70 104 M58 88 L70 72"/><path class="dv-equip" d="M78 88 L92 88"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(34,84)}<path class="dv-body" d="M40 88 L58 88 L72 88 M58 88 L70 104 M58 88 L70 72"/><path class="dv-equip" d="M72 88 L92 88"/><path class="dv-arrow" d="M88 78 L74 78 M80 73 l-6 5 6 5"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(34,84)}<path class="dv-body" d="M40 88 L58 88 L72 88 M58 88 L70 104 M58 88 L70 72"/><path class="dv-equip" d="M72 88 L92 88"/><path class="dv-guide" d="M58 88 L92 88"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(34,84)}<path class="dv-body" d="M40 88 L58 88 L78 88 M58 88 L70 104 M58 88 L70 72"/><path class="dv-equip" d="M78 88 L92 88"/>`;
+      f2=`${solo}${cabeca(34,84)}<path class="dv-body" d="M40 88 L58 88 L72 88 M58 88 L70 104 M58 88 L70 72"/><path class="dv-equip" d="M72 88 L92 88"/><path class="dv-arrow" d="M88 78 L74 78 M80 73 l-6 5 6 5"/>`;
+      f3=`${solo}${cabeca(34,84)}<path class="dv-body" d="M40 88 L58 88 L72 88 M58 88 L70 104 M58 88 L70 72"/><path class="dv-equip" d="M72 88 L92 88"/><path class="dv-guide" d="M58 88 L92 88"/>`;break;
     case 'band_row_standing':
-      f1=`${solo}${cabeca(46,42)}<path class="dv-body" d="M46 49 L46 87 M46 60 L64 68 M46 60 L28 68 M46 87 L38 124 M46 87 L54 124"/><path class="dv-equip" d="M64 68 L88 68"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(46,42)}<path class="dv-body" d="M46 49 L46 87 M46 60 L56 61 M46 60 L28 68 M46 87 L38 124 M46 87 L54 124"/><path class="dv-equip" d="M56 61 L88 68"/><path class="dv-arrow" d="M82 57 L63 57 M69 52 l-6 5 6 5"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(46,42)}<path class="dv-body" d="M46 49 L46 87 M46 60 L56 61 M46 60 L28 68 M46 87 L38 124 M46 87 L54 124"/><path class="dv-equip" d="M56 61 L88 68"/><path class="dv-guide" d="M46 49 L46 124"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(46,42)}<path class="dv-body" d="M46 49 L46 87 M46 60 L64 68 M46 60 L28 68 M46 87 L38 124 M46 87 L54 124"/><path class="dv-equip" d="M64 68 L88 68"/>`;
+      f2=`${solo}${cabeca(46,42)}<path class="dv-body" d="M46 49 L46 87 M46 60 L56 61 M46 60 L28 68 M46 87 L38 124 M46 87 L54 124"/><path class="dv-equip" d="M56 61 L88 68"/><path class="dv-arrow" d="M82 57 L63 57 M69 52 l-6 5 6 5"/>`;
+      f3=`${solo}${cabeca(46,42)}<path class="dv-body" d="M46 49 L46 87 M46 60 L56 61 M46 60 L28 68 M46 87 L38 124 M46 87 L54 124"/><path class="dv-equip" d="M56 61 L88 68"/><path class="dv-guide" d="M46 49 L46 124"/>`;break;
     case 'inverted_row_vis':
-      f1=`${solo}${cabeca(32,74)}<path class="dv-body" d="M38 78 L58 78 L82 78 M38 78 L26 96 M82 78 L94 96"/><path class="dv-equip" d="M28 64 L92 64"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(38,66)}<path class="dv-body" d="M44 70 L60 70 L82 70 M44 70 L34 90 M82 70 L92 90"/><path class="dv-equip" d="M28 64 L92 64"/><path class="dv-arrow" d="M88 84 L74 72 M76 81 l-3 -8 8 2"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(38,66)}<path class="dv-body" d="M44 70 L60 70 L82 70 M44 70 L34 90 M82 70 L92 90"/><path class="dv-equip" d="M28 64 L92 64"/><path class="dv-guide" d="M44 70 L82 70"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(32,74)}<path class="dv-body" d="M38 78 L58 78 L82 78 M38 78 L26 96 M82 78 L94 96"/><path class="dv-equip" d="M28 64 L92 64"/>`;
+      f2=`${solo}${cabeca(38,66)}<path class="dv-body" d="M44 70 L60 70 L82 70 M44 70 L34 90 M82 70 L92 90"/><path class="dv-equip" d="M28 64 L92 64"/><path class="dv-arrow" d="M88 84 L74 72 M76 81 l-3 -8 8 2"/>`;
+      f3=`${solo}${cabeca(38,66)}<path class="dv-body" d="M44 70 L60 70 L82 70 M44 70 L34 90 M82 70 L92 90"/><path class="dv-equip" d="M28 64 L92 64"/><path class="dv-guide" d="M44 70 L82 70"/>`;break;
     case 'australian_row_vis':
-      f1=`${solo}${cabeca(34,78)}<path class="dv-body" d="M40 82 L58 82 L82 82 M40 82 L28 98 M82 82 L94 98"/><path class="dv-equip" d="M28 68 L92 68"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(40,71)}<path class="dv-body" d="M46 75 L60 75 L82 75 M46 75 L35 94 M82 75 L92 94"/><path class="dv-equip" d="M28 68 L92 68"/><path class="dv-arrow" d="M88 88 L76 78 M78 86 l-3 -8 8 2"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(40,71)}<path class="dv-body" d="M46 75 L60 75 L82 75 M46 75 L35 94 M82 75 L92 94"/><path class="dv-equip" d="M28 68 L92 68"/><path class="dv-guide" d="M46 75 L82 75"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(34,78)}<path class="dv-body" d="M40 82 L58 82 L82 82 M40 82 L28 98 M82 82 L94 98"/><path class="dv-equip" d="M28 68 L92 68"/>`;
+      f2=`${solo}${cabeca(40,71)}<path class="dv-body" d="M46 75 L60 75 L82 75 M46 75 L35 94 M82 75 L92 94"/><path class="dv-equip" d="M28 68 L92 68"/><path class="dv-arrow" d="M88 88 L76 78 M78 86 l-3 -8 8 2"/>`;
+      f3=`${solo}${cabeca(40,71)}<path class="dv-body" d="M46 75 L60 75 L82 75 M46 75 L35 94 M82 75 L92 94"/><path class="dv-equip" d="M28 68 L92 68"/><path class="dv-guide" d="M46 75 L82 75"/>`;break;
     case 'ring_row_vis':
-      f1=`${solo}${cabeca(34,80)}<path class="dv-body" d="M40 84 L58 84 L82 84 M40 84 L28 100 M82 84 L94 100"/><path class="dv-equip" d="M46 58 L46 74 M76 58 L76 74"/><circle class="dv-anchor" cx="46" cy="76" r="3"/><circle class="dv-anchor" cx="76" cy="76" r="3"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(40,73)}<path class="dv-body" d="M46 77 L60 77 L82 77 M46 77 L35 96 M82 77 L92 96"/><path class="dv-equip" d="M48 58 L48 70 M74 58 L74 70"/><circle class="dv-anchor" cx="48" cy="72" r="3"/><circle class="dv-anchor" cx="74" cy="72" r="3"/><path class="dv-arrow" d="M88 90 L76 80 M78 88 l-3 -8 8 2"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(40,73)}<path class="dv-body" d="M46 77 L60 77 L82 77 M46 77 L35 96 M82 77 L92 96"/><path class="dv-equip" d="M48 58 L48 70 M74 58 L74 70"/><path class="dv-guide" d="M46 77 L82 77"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(34,80)}<path class="dv-body" d="M40 84 L58 84 L82 84 M40 84 L28 100 M82 84 L94 100"/><path class="dv-equip" d="M46 58 L46 74 M76 58 L76 74"/><circle class="dv-anchor" cx="46" cy="76" r="3"/><circle class="dv-anchor" cx="76" cy="76" r="3"/>`;
+      f2=`${solo}${cabeca(40,73)}<path class="dv-body" d="M46 77 L60 77 L82 77 M46 77 L35 96 M82 77 L92 96"/><path class="dv-equip" d="M48 58 L48 70 M74 58 L74 70"/><circle class="dv-anchor" cx="48" cy="72" r="3"/><circle class="dv-anchor" cx="74" cy="72" r="3"/><path class="dv-arrow" d="M88 90 L76 80 M78 88 l-3 -8 8 2"/>`;
+      f3=`${solo}${cabeca(40,73)}<path class="dv-body" d="M46 77 L60 77 L82 77 M46 77 L35 96 M82 77 L92 96"/><path class="dv-equip" d="M48 58 L48 70 M74 58 L74 70"/><path class="dv-guide" d="M46 77 L82 77"/>`;break;
     case 'assisted_pullup_vis':
-      f1=`${solo}${cabeca(50,34)}<path class="dv-body" d="M50 41 L50 78 M50 56 L40 66 M50 56 L60 66 M50 78 L44 116 M50 78 L56 116"/><path class="dv-equip" d="M26 28 L74 28"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(50,28)}<path class="dv-body" d="M50 35 L50 70 M50 48 L42 55 M50 48 L58 55 M50 70 L45 110 M50 70 L55 110"/><path class="dv-equip" d="M26 28 L74 28"/><path class="dv-arrow" d="M82 90 L82 56 M77 62 l5 -6 5 6"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(50,28)}<path class="dv-body" d="M50 35 L50 70 M50 48 L42 55 M50 48 L58 55 M50 70 L45 110 M50 70 L55 110"/><path class="dv-equip" d="M26 28 L74 28"/><path class="dv-guide" d="M50 35 L50 110"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(50,34)}<path class="dv-body" d="M50 41 L50 78 M50 56 L40 66 M50 56 L60 66 M50 78 L44 116 M50 78 L56 116"/><path class="dv-equip" d="M26 28 L74 28"/>`;
+      f2=`${solo}${cabeca(50,28)}<path class="dv-body" d="M50 35 L50 70 M50 48 L42 55 M50 48 L58 55 M50 70 L45 110 M50 70 L55 110"/><path class="dv-equip" d="M26 28 L74 28"/><path class="dv-arrow" d="M82 90 L82 56 M77 62 l5 -6 5 6"/>`;
+      f3=`${solo}${cabeca(50,28)}<path class="dv-body" d="M50 35 L50 70 M50 48 L42 55 M50 48 L58 55 M50 70 L45 110 M50 70 L55 110"/><path class="dv-equip" d="M26 28 L74 28"/><path class="dv-guide" d="M50 35 L50 110"/>`;break;
     case 'negative_pullup_vis':
-      f1=`${solo}${cabeca(50,28)}<path class="dv-body" d="M50 35 L50 70 M50 48 L42 55 M50 48 L58 55 M50 70 L45 110 M50 70 L55 110"/><path class="dv-equip" d="M26 28 L74 28"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(50,40)}<path class="dv-body" d="M50 47 L50 82 M50 60 L42 69 M50 60 L58 69 M50 82 L45 118 M50 82 L55 118"/><path class="dv-equip" d="M26 28 L74 28"/><path class="dv-arrow" d="M82 58 L82 92 M77 86 l5 6 5 -6"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(50,48)}<path class="dv-body" d="M50 55 L50 90 M50 68 L42 77 M50 68 L58 77 M50 90 L45 122 M50 90 L55 122"/><path class="dv-equip" d="M26 28 L74 28"/><path class="dv-guide" d="M50 35 L50 122"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(50,28)}<path class="dv-body" d="M50 35 L50 70 M50 48 L42 55 M50 48 L58 55 M50 70 L45 110 M50 70 L55 110"/><path class="dv-equip" d="M26 28 L74 28"/>`;
+      f2=`${solo}${cabeca(50,40)}<path class="dv-body" d="M50 47 L50 82 M50 60 L42 69 M50 60 L58 69 M50 82 L45 118 M50 82 L55 118"/><path class="dv-equip" d="M26 28 L74 28"/><path class="dv-arrow" d="M82 58 L82 92 M77 86 l5 6 5 -6"/>`;
+      f3=`${solo}${cabeca(50,48)}<path class="dv-body" d="M50 55 L50 90 M50 68 L42 77 M50 68 L58 77 M50 90 L45 122 M50 90 L55 122"/><path class="dv-equip" d="M26 28 L74 28"/><path class="dv-guide" d="M50 35 L50 122"/>`;break;
 
     case 'hip_flexor_stretch':
-      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L36 72 M50 60 L64 72 M50 87 L44 124 M50 87 L70 112"/>${passoDiagramaCalifit(1,84,20)}`
-      f2=`${solo}${cabeca(56,42)}<path class="dv-body" d="M56 49 L56 87 M56 60 L43 72 M56 60 L70 72 M56 87 L50 124 M56 87 L75 111"/><path class="dv-arrow" d="M36 104 Q48 96 58 104"/>${passoDiagramaCalifit(2,84,20)}`
-      f3=`${solo}${cabeca(56,42)}<path class="dv-body" d="M56 49 L56 87 M56 60 L43 72 M56 60 L70 72 M56 87 L50 124 M56 87 L75 111"/><path class="dv-guide" d="M56 49 L56 124"/><circle class="dv-anchor" cx="50" cy="124" r="3"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L36 72 M50 60 L64 72 M50 87 L44 124 M50 87 L70 112"/>`
+      f2=`${solo}${cabeca(56,42)}<path class="dv-body" d="M56 49 L56 87 M56 60 L43 72 M56 60 L70 72 M56 87 L50 124 M56 87 L75 111"/><path class="dv-arrow" d="M36 104 Q48 96 58 104"/>`
+      f3=`${solo}${cabeca(56,42)}<path class="dv-body" d="M56 49 L56 87 M56 60 L43 72 M56 60 L70 72 M56 87 L50 124 M56 87 L75 111"/><path class="dv-guide" d="M56 49 L56 124"/><circle class="dv-anchor" cx="50" cy="124" r="3"/>`;break;
     case 'hamstring_stretch':
-      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L36 72 M50 60 L64 72 M50 87 L44 124 M50 87 L70 124"/>${passoDiagramaCalifit(1,84,20)}`
-      f2=`${solo}${cabeca(60,58)}<path class="dv-body" d="M60 65 L52 95 M52 95 L44 124 M52 95 L72 124 M52 77 L38 86 M52 77 L67 88"/><path class="dv-arrow" d="M70 64 Q58 56 45 62"/>${passoDiagramaCalifit(2,84,20)}`
-      f3=`${solo}${cabeca(60,58)}<path class="dv-body" d="M60 65 L52 95 M52 95 L44 124 M52 95 L72 124 M52 77 L38 86 M52 77 L67 88"/><path class="dv-guide" d="M60 65 L44 124"/><circle class="dv-anchor" cx="44" cy="124" r="3"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L36 72 M50 60 L64 72 M50 87 L44 124 M50 87 L70 124"/>`
+      f2=`${solo}${cabeca(60,58)}<path class="dv-body" d="M60 65 L52 95 M52 95 L44 124 M52 95 L72 124 M52 77 L38 86 M52 77 L67 88"/><path class="dv-arrow" d="M70 64 Q58 56 45 62"/>`
+      f3=`${solo}${cabeca(60,58)}<path class="dv-body" d="M60 65 L52 95 M52 95 L44 124 M52 95 L72 124 M52 77 L38 86 M52 77 L67 88"/><path class="dv-guide" d="M60 65 L44 124"/><circle class="dv-anchor" cx="44" cy="124" r="3"/>`;break;
     case 'hip_mobility':
-      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 86 M50 60 L36 72 M50 60 L64 72 M50 86 L39 124 M50 86 L61 124"/>${passoDiagramaCalifit(1,84,20)}`
-      f2=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 86 M50 60 L36 72 M50 60 L64 72 M50 86 L24 124 M50 86 L67 108"/><path class="dv-arrow" d="M38 95 Q26 103 19 111"/>${passoDiagramaCalifit(2,84,20)}`
-      f3=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 86 M50 60 L36 72 M50 60 L64 72 M50 86 L24 124 M50 86 L67 108"/><path class="dv-guide" d="M24 124 L67 108"/><circle class="dv-anchor" cx="24" cy="124" r="3"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 86 M50 60 L36 72 M50 60 L64 72 M50 86 L39 124 M50 86 L61 124"/>`
+      f2=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 86 M50 60 L36 72 M50 60 L64 72 M50 86 L24 124 M50 86 L67 108"/><path class="dv-arrow" d="M38 95 Q26 103 19 111"/>`
+      f3=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 86 M50 60 L36 72 M50 60 L64 72 M50 86 L24 124 M50 86 L67 108"/><path class="dv-guide" d="M24 124 L67 108"/><circle class="dv-anchor" cx="24" cy="124" r="3"/>`;break;
     case 'walk_light':
-      f1=`${solo}${cabeca(44,42)}<path class="dv-body" d="M44 49 L44 86 M44 60 L31 72 M44 60 L57 72 M44 86 L37 124 M44 86 L53 118"/>${passoDiagramaCalifit(1,84,20)}`
-      f2=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 86 M50 60 L38 72 M50 60 L62 68 M50 86 L42 124 M50 86 L60 113"/><path class="dv-arrow" d="M25 107 Q40 96 54 101"/>${passoDiagramaCalifit(2,84,20)}`
-      f3=`${solo}${cabeca(56,42)}<path class="dv-body" d="M56 49 L56 86 M56 60 L44 68 M56 60 L67 72 M56 86 L49 113 M56 86 L64 124"/><path class="dv-arrow" d="M38 106 Q54 96 70 102"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(44,42)}<path class="dv-body" d="M44 49 L44 86 M44 60 L31 72 M44 60 L57 72 M44 86 L37 124 M44 86 L53 118"/>`
+      f2=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 86 M50 60 L38 72 M50 60 L62 68 M50 86 L42 124 M50 86 L60 113"/><path class="dv-arrow" d="M25 107 Q40 96 54 101"/>`
+      f3=`${solo}${cabeca(56,42)}<path class="dv-body" d="M56 49 L56 86 M56 60 L44 68 M56 60 L67 72 M56 86 L49 113 M56 86 L64 124"/><path class="dv-arrow" d="M38 106 Q54 96 70 102"/>`;break;
     case 'march_place':
-      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 86 M50 60 L37 71 M50 60 L63 71 M50 86 L42 124 M50 86 L58 124"/>${passoDiagramaCalifit(1,84,20)}`
-      f2=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 86 M50 60 L37 71 M50 60 L63 71 M50 86 L40 104 M50 86 L58 124"/><path class="dv-arrow" d="M28 111 Q35 101 43 95"/>${passoDiagramaCalifit(2,84,20)}`
-      f3=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 86 M50 60 L37 71 M50 60 L63 71 M50 86 L42 124 M50 86 L60 104"/><path class="dv-arrow" d="M72 111 Q65 101 57 95"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 86 M50 60 L37 71 M50 60 L63 71 M50 86 L42 124 M50 86 L58 124"/>`
+      f2=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 86 M50 60 L37 71 M50 60 L63 71 M50 86 L40 104 M50 86 L58 124"/><path class="dv-arrow" d="M28 111 Q35 101 43 95"/>`
+      f3=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 86 M50 60 L37 71 M50 60 L63 71 M50 86 L42 124 M50 86 L60 104"/><path class="dv-arrow" d="M72 111 Q65 101 57 95"/>`;break;
     case 'jumping_jack':
-      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 86 M50 60 L39 71 M50 60 L61 71 M50 86 L44 124 M50 86 L56 124"/>${passoDiagramaCalifit(1,84,20)}`
-      f2=`${solo}${cabeca(50,34)}<path class="dv-body" d="M50 41 L50 78 M50 56 L34 44 M50 56 L66 44 M50 78 L32 124 M50 78 L68 124"/><path class="dv-arrow" d="M22 104 Q31 82 44 68"/>${passoDiagramaCalifit(2,84,20)}`
-      f3=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 86 M50 60 L39 71 M50 60 L61 71 M50 86 L44 124 M50 86 L56 124"/><path class="dv-arrow" d="M76 103 Q66 83 57 68"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 86 M50 60 L39 71 M50 60 L61 71 M50 86 L44 124 M50 86 L56 124"/>`
+      f2=`${solo}${cabeca(50,34)}<path class="dv-body" d="M50 41 L50 78 M50 56 L34 44 M50 56 L66 44 M50 78 L32 124 M50 78 L68 124"/><path class="dv-arrow" d="M22 104 Q31 82 44 68"/>`
+      f3=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 86 M50 60 L39 71 M50 60 L61 71 M50 86 L44 124 M50 86 L56 124"/><path class="dv-arrow" d="M76 103 Q66 83 57 68"/>`;break;
     case 'stationary_run':
-      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 84 M50 60 L38 72 M50 60 L62 68 M50 84 L42 124 M50 84 L60 104"/>${passoDiagramaCalifit(1,84,20)}`
-      f2=`${solo}${cabeca(55,42)}<path class="dv-body" d="M55 49 L55 84 M55 60 L44 70 M55 60 L66 66 M55 84 L47 104 M55 84 L66 124"/><path class="dv-arrow" d="M35 112 Q45 97 51 90"/>${passoDiagramaCalifit(2,84,20)}`
-      f3=`${solo}${cabeca(45,42)}<path class="dv-body" d="M45 49 L45 84 M45 60 L34 66 M45 60 L56 70 M45 84 L24 124 M45 84 L43 104"/><path class="dv-arrow" d="M65 112 Q55 97 49 90"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 84 M50 60 L38 72 M50 60 L62 68 M50 84 L42 124 M50 84 L60 104"/>`
+      f2=`${solo}${cabeca(55,42)}<path class="dv-body" d="M55 49 L55 84 M55 60 L44 70 M55 60 L66 66 M55 84 L47 104 M55 84 L66 124"/><path class="dv-arrow" d="M35 112 Q45 97 51 90"/>`
+      f3=`${solo}${cabeca(45,42)}<path class="dv-body" d="M45 49 L45 84 M45 60 L34 66 M45 60 L56 70 M45 84 L24 124 M45 84 L43 104"/><path class="dv-arrow" d="M65 112 Q55 97 49 90"/>`;break;
     case 'jump_rope':
-      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 84 M50 60 L38 72 M50 60 L62 72 M50 84 L44 124 M50 84 L56 124"/><path class="dv-arrow" d="M28 84 Q18 69 28 54"/><path class="dv-arrow" d="M72 54 Q82 69 72 84"/>${passoDiagramaCalifit(1,84,20)}`
-      f2=`${solo}${cabeca(50,35)}<path class="dv-body" d="M50 42 L50 77 M50 55 L38 68 M50 55 L62 68 M50 77 L44 117 M50 77 L56 117"/><path class="dv-arrow" d="M23 86 Q50 24 77 86"/>${passoDiagramaCalifit(2,84,20)}`
-      f3=`${solo}${cabeca(50,35)}<path class="dv-body" d="M50 42 L50 77 M50 55 L38 68 M50 55 L62 68 M50 77 L44 117 M50 77 L56 117"/><path class="dv-guide" d="M44 117 L56 117"/><circle class="dv-anchor" cx="44" cy="117" r="3"/><circle class="dv-anchor" cx="56" cy="117" r="3"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 84 M50 60 L38 72 M50 60 L62 72 M50 84 L44 124 M50 84 L56 124"/><path class="dv-arrow" d="M28 84 Q18 69 28 54"/><path class="dv-arrow" d="M72 54 Q82 69 72 84"/>`
+      f2=`${solo}${cabeca(50,35)}<path class="dv-body" d="M50 42 L50 77 M50 55 L38 68 M50 55 L62 68 M50 77 L44 117 M50 77 L56 117"/><path class="dv-arrow" d="M23 86 Q50 24 77 86"/>`
+      f3=`${solo}${cabeca(50,35)}<path class="dv-body" d="M50 42 L50 77 M50 55 L38 68 M50 55 L62 68 M50 77 L44 117 M50 77 L56 117"/><path class="dv-guide" d="M44 117 L56 117"/><circle class="dv-anchor" cx="44" cy="117" r="3"/><circle class="dv-anchor" cx="56" cy="117" r="3"/>`;break;
     case 'step_jack_vis':
-      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 86 M50 60 L39 71 M50 60 L61 71 M50 86 L44 124 M50 86 L56 124"/>${passoDiagramaCalifit(1,84,20)}`
-      f2=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 86 M50 60 L35 50 M50 60 L65 50 M50 86 L31 124 M50 86 L56 124"/><path class="dv-arrow" d="M24 111 Q31 96 39 87"/>${passoDiagramaCalifit(2,84,20)}`
-      f3=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 86 M50 60 L39 71 M50 60 L61 71 M50 86 L44 124 M50 86 L56 124"/><path class="dv-arrow" d="M76 104 Q65 86 57 72"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 86 M50 60 L39 71 M50 60 L61 71 M50 86 L44 124 M50 86 L56 124"/>`
+      f2=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 86 M50 60 L35 50 M50 60 L65 50 M50 86 L31 124 M50 86 L56 124"/><path class="dv-arrow" d="M24 111 Q31 96 39 87"/>`
+      f3=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 86 M50 60 L39 71 M50 60 L61 71 M50 86 L44 124 M50 86 L56 124"/><path class="dv-arrow" d="M76 104 Q65 86 57 72"/>`;break;
     case 'calf_raise':
-      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L36 72 M50 60 L64 72 M50 87 L42 124 M50 87 L58 124"/>${passoDiagramaCalifit(1,84,20)}`;
-      f2=`${solo}${cabeca(50,34)}<path class="dv-body" d="M50 41 L50 79 M50 52 L36 64 M50 52 L64 64 M50 79 L42 117 M50 79 L58 117"/><path class="dv-arrow" d="M80 104 L80 84 M75 90 l5 -6 5 6"/>${passoDiagramaCalifit(2,84,20)}`;
-      f3=`${solo}${cabeca(50,34)}<path class="dv-body" d="M50 41 L50 79 M50 52 L36 64 M50 52 L64 64 M50 79 L42 117 M50 79 L58 117"/><path class="dv-guide" d="M42 117 L58 117"/><circle class="dv-anchor" cx="42" cy="117" r="3"/><circle class="dv-anchor" cx="58" cy="117" r="3"/>${passoDiagramaCalifit(3,84,20)}`;break;
+      f1=`${solo}${cabeca(50,42)}<path class="dv-body" d="M50 49 L50 87 M50 60 L36 72 M50 60 L64 72 M50 87 L42 124 M50 87 L58 124"/>`;
+      f2=`${solo}${cabeca(50,34)}<path class="dv-body" d="M50 41 L50 79 M50 52 L36 64 M50 52 L64 64 M50 79 L42 117 M50 79 L58 117"/><path class="dv-arrow" d="M80 104 L80 84 M75 90 l5 -6 5 6"/>`;
+      f3=`${solo}${cabeca(50,34)}<path class="dv-body" d="M50 41 L50 79 M50 52 L36 64 M50 52 L64 64 M50 79 L42 117 M50 79 L58 117"/><path class="dv-guide" d="M42 117 L58 117"/><circle class="dv-anchor" cx="42" cy="117" r="3"/><circle class="dv-anchor" cx="58" cy="117" r="3"/>`;break;
     default:return '';
   }
   return `<svg viewBox="0 0 328 154" role="img" aria-label="Demonstração simplificada: guia visual em três etapas do exercício" data-etapas="1. Preparar|2. Mover|3. Controlar"><title>Posição inicial e posição final, com etapa intermediária de movimento</title>${quadroDiagramaCalifit(4,'1. Preparar',f1)}${quadroDiagramaCalifit(112,'2. Mover',f2,true)}${quadroDiagramaCalifit(220,'3. Controlar',f3)}</svg>`;
@@ -17046,7 +17053,7 @@ function htmlDiagramaExercicioCalifit(nome,compacto=false){
   const aviso=cobertura.modo==='proprio'
     ?'<div class="exercise-visual-shared-note">Representa diretamente o exercício selecionado.</div>'
     :'<div class="exercise-visual-shared-note">Usa uma base visual próxima para apoiar o entendimento. Siga as instruções escritas desta variação.</div>';
-  return `<div class="exercise-visual priority${compacto?' compact':''}" data-ex-diagrama="${escHtml(tipo)}" data-diagrama-qualidade="prioritario" data-diagrama-cobertura="${escHtml(cobertura.modo)}" data-nivel-diagrama="${escHtml(nivel)}"><div class="exercise-visual-head"><span>${escHtml(dados.titulo)}</span><span class="exercise-visual-tag">${escHtml(tag)}</span></div>${svg}${aviso}<div class="exercise-visual-cues"><div class="exercise-visual-cue"><strong>O que deve se mover</strong>${escHtml(dados.move)}</div><div class="exercise-visual-cue avoid"><strong>Evite isto</strong>${escHtml(dados.evite)}</div></div><div class="exercise-visual-note">${escHtml(dados.nota)}</div></div>`;
+  return `<div class="exercise-visual priority${compacto?' compact':''}" data-ex-diagrama="${escHtml(tipo)}" data-diagrama-qualidade="prioritario" data-diagrama-cobertura="${escHtml(cobertura.modo)}" data-nivel-diagrama="${escHtml(nivel)}"><div class="exercise-visual-head"><span>${escHtml(dados.titulo)}</span><span class="exercise-visual-tag">${escHtml(tag)}</span></div>${svg}<div class="exercise-visual-legend">Seta verde: movimento · Vermelho: ponto de atenção · Tracejado: referência de posição.</div>${aviso}<div class="exercise-visual-cues"><div class="exercise-visual-cue"><strong>O que deve se mover</strong>${escHtml(dados.move)}</div><div class="exercise-visual-cue avoid"><strong>Evite isto</strong>${escHtml(dados.evite)}</div></div><div class="exercise-visual-note">${escHtml(dados.nota)}</div></div>`;
 }
 function listarDiagramasExerciciosCalifit(){return listarCoberturaDiagramasCalifit().filter(x=>x.modo==='proprio'||x.modo==='compartilhado').map(x=>({...x,qualidade:svgDiagramaExercicioCalifit(x.tipo)?'prioritario':'sem_diagrama'}));}
 
@@ -17588,8 +17595,8 @@ function renderHistoricoTreinos(el){
   </details>
   <div class="hist-o4-filters">
     <select class="fi" id="hist-o4-periodo" aria-label="Período do histórico"><option value="30">Últimos 30 dias</option><option value="90" selected>Últimos 90 dias</option><option value="0">Todo o histórico</option></select>
-    <select class="fi" id="hist-o4-tipo" aria-label="Tipo de registro"><option value="todos">Todos os tipos</option><option value="calistenia">Calistenia</option><option value="atividade">Atividades complementares</option></select>
-    <select class="fi" id="hist-o4-status" aria-label="Status do registro"><option value="todos">Todos os status</option><option value="concluido">Concluídos</option><option value="parcial">Parciais</option><option value="nao">Não realizados</option></select>
+    <select class="fi" id="hist-o4-tipo" aria-label="Tipo de registro"><option value="todos">Todos tipos</option><option value="calistenia">Calistenia</option><option value="atividade">Atividades complementares</option></select>
+    <select class="fi" id="hist-o4-status" aria-label="Status do registro"><option value="todos">Todos status</option><option value="concluido">Concluídos</option><option value="parcial">Parciais</option><option value="nao">Não realizados</option></select>
     <input class="fi hist-o4-search" id="hist-o4-busca" type="search" placeholder="Buscar exercício ou atividade" aria-label="Buscar no histórico">
   </div>
   <div class="hist-o4-list" id="hist-o4-list"></div>`;
