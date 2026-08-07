@@ -7907,7 +7907,12 @@ function acionarLembreteCalifit(tipo,item=null){
   goTab(l?.tab||0);
 }
 function abrirCentralLembretesCalifit(agoraOpcional){
-  const dados=avaliarLembretesComDispensadosCalifit(agoraOpcional);
+  // 167G.11: addEventListener passa um MouseEvent como primeiro argumento.
+  // A Central deve usar esse evento apenas como clique, nunca como uma data.
+  const dataValida=agoraOpcional instanceof Date||typeof agoraOpcional==='string'||typeof agoraOpcional==='number'
+    ?agoraOpcional
+    :undefined;
+  const dados=avaliarLembretesComDispensadosCalifit(dataValida);
   const iconeTipo=tipo=>({treinoHoje:'atividade',checkin:'checkin',fecharSemana:'fechar',corpoBio:'peso',backup:'backup'}[tipo]||'lembretes');
   const cardItem=(l,disp=false)=>`<div class="info ${disp?'ig':'ib'} lembrete-central" data-lembrete="${escHtml(l.tipo)}">
     <div style="font-weight:var(--fw-strong);margin-bottom:3px">${iconeCalifitInline(iconeTipo(l.tipo))}${escHtml(l.titulo)}</div>
@@ -7922,7 +7927,7 @@ function abrirCentralLembretesCalifit(agoraOpcional){
   mOpen('m2',`<div id="central-lembretes">
     <div class="mt2">${tituloIcone('lembretes','Central de lembretes')}</div>
     <div class="ms">Lembretes locais do app. Eles não alteram seu plano automaticamente.</div>
-    ${dados.ativos.length?`<div class="info ib"><strong>${dados.ativos.length} pendência${dados.ativos.length===1?'':'s'} ativa${dados.ativos.length===1?'':'s'}</strong><br>${escHtml(fraseListaHumana(titulosAtivos))}</div><div class="h3">${tituloIcone('checkin',`Pendentes (${dados.ativos.length})`)}</div><div style="display:grid;gap:8px">${dados.ativos.map(l=>cardItem(l,false)).join('')}</div>`:'<div class="info ig">Sem lembretes pendentes agora.</div>'}
+    ${dados.ativos.length?`<div class="info ib"><strong>${dados.ativos.length} lembrete${dados.ativos.length===1?'':'s'} ativo${dados.ativos.length===1?'':'s'}</strong><br>${escHtml(fraseListaHumana(titulosAtivos))}</div><div class="h3">${tituloIcone('checkin',`Lembretes ativos (${dados.ativos.length})`)}</div><div style="display:grid;gap:8px">${dados.ativos.map(l=>cardItem(l,false)).join('')}</div>`:'<div class="info ig">Sem lembretes pendentes agora.</div>'}
     <details class="dismissed-reminders"><summary>Dispensados hoje (${dados.dispensadosHoje.length}) — Ver</summary>
     ${dados.dispensadosHoje.length?`<div style="display:grid;gap:8px;margin-top:8px">${dados.dispensadosHoje.map(l=>cardItem(l,true)).join('')}</div>`:'<div class="info ib" style="margin-top:8px">Nenhum lembrete dispensado hoje.</div>'}</details>
     <button class="btn btn-s" id="central-lembretes-fechar" type="button">Fechar</button>
@@ -13583,7 +13588,7 @@ function htmlAtencaoAssistentePlano(alertas=[],recs=[],foco=[]){
   return `<div class="card trainer-attention-compact" id="trainer-atencao">
     <div class="h3">${tituloIcone('alerta','Atenção')}</div>
     ${orientacoes.length?`<div class="context-list">${orientacoes.map((a,i)=>alertaAssistenteHtml(a,i)).join('')}</div>`:''}
-    ${totalPendencias?`<div class="trainer-pending-summary"><span><strong>${totalPendencias} pendência${totalPendencias===1?'':'s'} ativa${totalPendencias===1?'':'s'}.</strong>${titulosPendencias.length?`<small style="display:block;margin-top:3px">${escHtml(fraseListaHumana(titulosPendencias))}</small>`:''}</span><button class="btn btn-s btn-sm" id="btn-central-lembretes-assistente" type="button">Ver pendências</button></div>`:''}
+    ${totalPendencias?`<div class="trainer-pending-summary"><span><strong>${totalPendencias} lembrete${totalPendencias===1?'':'s'} ativo${totalPendencias===1?'':'s'}.</strong>${titulosPendencias.length?`<small style="display:block;margin-top:3px">${escHtml(fraseListaHumana(titulosPendencias))}</small>`:''}</span><button class="btn btn-s btn-sm" id="btn-central-lembretes-assistente" type="button">Ver lembretes</button></div>`:''}
   </div>`;
 }
 function htmlBaseAssistentePlano(ctreino={},ultCheck=null,alertas=[],recs=[]){

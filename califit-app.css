@@ -2976,3 +2976,19 @@ body.califit-timer-open #app{padding-top:0!important}
   .hist-o4-filters select:last-of-type,.hist-o4-search{grid-column:auto!important}
   .assistant-help-primary>.trainer-summary .trainer-summary-title{font-size:14px}
 }
+
+
+/* 167G.11 — lembretes consistentes e filtros do histórico no Android */
+.hist-o4-filters{
+  grid-template-columns:minmax(0,1.06fr) minmax(0,.94fr)!important;
+}
+.hist-o4-filters select{
+  padding-left:10px!important;
+  padding-right:38px!important;
+  font-size:13.5px!important;
+  text-overflow:clip;
+}
+@media(max-width:350px){
+  .hist-o4-filters{grid-template-columns:1fr!important}
+  .hist-o4-filters select{font-size:14px!important;padding-left:12px!important;padding-right:38px!important}
+}

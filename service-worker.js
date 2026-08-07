@@ -1,5 +1,5 @@
 const PWA_RELEASE = '68A';
-const CACHE_REVISION = '167G10-rc1';
+const CACHE_REVISION = '167G11-rc1';
 const CACHE_NAME = `califit-pro-${PWA_RELEASE.toLowerCase()}-${CACHE_REVISION.toLowerCase()}`;
 
 const APP_ASSETS = [
