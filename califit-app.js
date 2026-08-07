@@ -7656,6 +7656,13 @@ function registrarExercicioComoPlanejadoCalifit(ex){
   ST.exec[ex.n]=registro;
   salvar();
 }
+function limparStatusRapidoExercicioCalifit(ex){
+  const atual=limparDadosPlanejadosRegistroRapidoCalifit(ST.exec[ex.n]||{});
+  delete atual.feito;
+  if(Object.keys(atual).length) ST.exec[ex.n]=atual;
+  else delete ST.exec[ex.n];
+  salvar();
+}
 function definirStatusRapidoExercicioCalifit(ex,status){
   if(status==='sim'){
     registrarExercicioComoPlanejadoCalifit(ex);
@@ -7911,10 +7918,11 @@ function abrirCentralLembretesCalifit(agoraOpcional){
       <button class="btn btn-s btn-sm${disp?' reminder-secondary-link':''}" type="button" data-lembrete-central-dismiss="${escHtml(l.tipo)}" style="margin:0">${disp?'Manter dispensado':'Dispensar hoje'}</button>
     </div>
   </div>`;
+  const titulosAtivos=dados.ativos.map(l=>l.titulo).filter(Boolean);
   mOpen('m2',`<div id="central-lembretes">
     <div class="mt2">${tituloIcone('lembretes','Central de lembretes')}</div>
     <div class="ms">Lembretes locais do app. Eles não alteram seu plano automaticamente.</div>
-    ${dados.ativos.length?`<div class="h3">${tituloIcone('checkin','Pendentes')}</div><div style="display:grid;gap:8px">${dados.ativos.map(l=>cardItem(l,false)).join('')}</div>`:'<div class="info ig">Sem lembretes pendentes agora.</div>'}
+    ${dados.ativos.length?`<div class="info ib"><strong>${dados.ativos.length} pendência${dados.ativos.length===1?'':'s'} ativa${dados.ativos.length===1?'':'s'}</strong><br>${escHtml(fraseListaHumana(titulosAtivos))}</div><div class="h3">${tituloIcone('checkin',`Pendentes (${dados.ativos.length})`)}</div><div style="display:grid;gap:8px">${dados.ativos.map(l=>cardItem(l,false)).join('')}</div>`:'<div class="info ig">Sem lembretes pendentes agora.</div>'}
     <details class="dismissed-reminders"><summary>Dispensados hoje (${dados.dispensadosHoje.length}) — Ver</summary>
     ${dados.dispensadosHoje.length?`<div style="display:grid;gap:8px;margin-top:8px">${dados.dispensadosHoje.map(l=>cardItem(l,true)).join('')}</div>`:'<div class="info ib" style="margin-top:8px">Nenhum lembrete dispensado hoje.</div>'}</details>
     <button class="btn btn-s" id="central-lembretes-fechar" type="button">Fechar</button>
@@ -9512,6 +9520,14 @@ function mkExCard(ex,i,blocoId,opts={}){
   }));
   card.querySelectorAll('[data-fv]').forEach(b=>b.addEventListener('click',()=>{
     const status=b.dataset.fv;
+    const jaSelecionado=ST.exec[ex.n]?.feito===status;
+    if(jaSelecionado){
+      limparStatusRapidoExercicioCalifit(ex);
+      card.classList.remove('done','skip');
+      card.querySelectorAll('[data-fv]').forEach(x=>x.classList.remove('on'));
+      showToast('Seleção removida · '+ex.n);
+      return;
+    }
     definirStatusRapidoExercicioCalifit(ex,status);
     card.classList.toggle('done',status==='sim');
     card.classList.toggle('skip',status==='nao');
@@ -9598,6 +9614,14 @@ function mkBlocoSimples(ico,titulo,exs,id){
     }));
     card.querySelectorAll('[data-fv2]').forEach(b=>b.addEventListener('click',()=>{
       const v=b.dataset.fv2;
+      const jaSelecionado=ST.exec[ex.n]?.feito===v;
+      if(jaSelecionado){
+        limparStatusRapidoExercicioCalifit(ex);
+        card.classList.remove('done','skip');
+        card.querySelectorAll('[data-fv2]').forEach(x=>x.classList.remove('on'));
+        showToast('Seleção removida · '+ex.n);
+        return;
+      }
       definirStatusRapidoExercicioCalifit(ex,v);
       card.classList.toggle('done',v==='sim');
       card.classList.toggle('skip',v==='nao');
@@ -13548,8 +13572,10 @@ function proximaAcaoAssistentePlano(sem,dia){
 }
 function htmlAtencaoAssistentePlano(alertas=[],recs=[],foco=[]){
   const dados=avaliarLembretesComDispensadosCalifit();
-  const tiposRelevantes=new Set(['checkin','treinoHoje','fecharSemana','corpoBio']);
-  const totalPendencias=arr(dados.ativos).filter(l=>tiposRelevantes.has(l.tipo)).length;
+  // 167G.10: o contador do Assistente e a Central usam a mesma lista.
+  const pendenciasAtivas=arr(dados.ativos);
+  const totalPendencias=pendenciasAtivas.length;
+  const titulosPendencias=pendenciasAtivas.slice(0,3).map(l=>l.titulo).filter(Boolean);
   const orientacoes=mensagensUnicasVisuais([...arr(alertas),...arr(recs),...arr(foco)])
     .filter(txt=>/dor|seguran|recuper|cirurg|les[aã]o|interrompa|reduz|n[aã]o progred|t[eé]cnica ruim|esfor[cç]o alto/i.test(String(txt||'')))
     .slice(0,2);
@@ -13557,7 +13583,7 @@ function htmlAtencaoAssistentePlano(alertas=[],recs=[],foco=[]){
   return `<div class="card trainer-attention-compact" id="trainer-atencao">
     <div class="h3">${tituloIcone('alerta','Atenção')}</div>
     ${orientacoes.length?`<div class="context-list">${orientacoes.map((a,i)=>alertaAssistenteHtml(a,i)).join('')}</div>`:''}
-    ${totalPendencias?`<div class="trainer-pending-summary"><span>${totalPendencias} pendência${totalPendencias===1?'':'s'} na Central de lembretes.</span><button class="btn btn-s btn-sm" id="btn-central-lembretes-assistente" type="button">Ver pendências</button></div>`:''}
+    ${totalPendencias?`<div class="trainer-pending-summary"><span><strong>${totalPendencias} pendência${totalPendencias===1?'':'s'} ativa${totalPendencias===1?'':'s'}.</strong>${titulosPendencias.length?`<small style="display:block;margin-top:3px">${escHtml(fraseListaHumana(titulosPendencias))}</small>`:''}</span><button class="btn btn-s btn-sm" id="btn-central-lembretes-assistente" type="button">Ver pendências</button></div>`:''}
   </div>`;
 }
 function htmlBaseAssistentePlano(ctreino={},ultCheck=null,alertas=[],recs=[]){
@@ -13568,12 +13594,19 @@ function htmlBaseAssistentePlano(ctreino={},ultCheck=null,alertas=[],recs=[]){
   const dificeis=arr(ctreino.exerciciosDificeis).filter(Boolean).slice(0,3);
   if(faceis.length) linhas.push(['Exercícios fáceis',fraseListaHumana(faceis)]);
   if(dificeis.length) linhas.push(['Exercícios difíceis',fraseListaHumana(dificeis)]);
-  if(recs.length) linhas.push(['Recomendações atuais',fraseListaHumana(recs.slice(0,3).map(r=>String(r).replace(/\.$/,'')))]);
+  const recomendacoesAtuais=arr(recs).slice(0,3).map(r=>{
+    const txt=String(r||'').trim();
+    return txt&&/[.!?…]$/.test(txt)?txt:(txt?`${txt}.`:'');
+  }).filter(Boolean);
+  if(recomendacoesAtuais.length) linhas.push(['__recomendacoes__',recomendacoesAtuais]);
   const eq=arr(ST.perfil.equipamentos).filter(Boolean).slice(0,3);
   if(eq.length) linhas.push(['Equipamentos do perfil',fraseListaHumana(eq)]);
   if(ST.previaProximaSemana) linhas.push(['Prévia da próxima semana','Aguardando revisão/aplicação.']);
+  const linhasHtml=linhas.slice(0,7).map(([k,v])=>k==='__recomendacoes__'
+    ? `<div class="trainer-data-row trainer-recommendations-row"><div class="trainer-data-label">Recomendações atuais</div><div class="trainer-data-value">${v.map(r=>`<div style="margin-bottom:8px">• ${escHtml(r)}</div>`).join('')}</div></div>`
+    : `<div class="trainer-data-row"><div class="trainer-data-label">${escHtml(k)}</div><div class="trainer-data-value">${escHtml(v)}</div></div>`).join('');
   const corpo=linhas.length
-    ? `<div class="trainer-data-list">${linhas.slice(0,7).map(([k,v])=>`<div class="trainer-data-row"><div class="trainer-data-label">${escHtml(k)}</div><div class="trainer-data-value">${escHtml(v)}</div></div>`).join('')}</div>`
+    ? `<div class="trainer-data-list">${linhasHtml}</div>`
     : '<div class="info ib">Ainda faltam registros suficientes.</div>';
   return `<details class="card" id="trainer-base-assistente">
     <summary class="trainer-summary"><span class="trainer-summary-title">${tituloIcone('database','Dados considerados')}</span></summary>
@@ -17839,7 +17872,7 @@ function aprimorarInterface167A(){
     nome.setAttribute('aria-label',nome.textContent||'Nome do exercício');
   }
   const s3=$('s3');
-  if(s3&&!$('chat-clear-167a')&&($('chat-msgs')||$('chat-last-answer'))){
+  if(s3&&!$('chat-clear-167a')&&!$('btn-limpar-chat')&&($('chat-msgs')||$('chat-last-answer'))){
     const b=document.createElement('button');
     b.type='button';b.id='chat-clear-167a';b.className='btn btn-s btn-sm chat-clear-167a';
     b.textContent='Limpar conversa';b.addEventListener('click',limparConversaAssistenteCalifit);
