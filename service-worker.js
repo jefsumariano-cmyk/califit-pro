@@ -1,5 +1,5 @@
 const PWA_RELEASE = '68A';
-const CACHE_REVISION = '167E-final';
+const CACHE_REVISION = '167G9-rc1';
 const CACHE_NAME = `califit-pro-${PWA_RELEASE.toLowerCase()}-${CACHE_REVISION.toLowerCase()}`;
 
 const APP_ASSETS = [
@@ -9,6 +9,7 @@ const APP_ASSETS = [
   './califit-app.js',
   './califit-explore.js',
   './manifest.webmanifest',
+  './icons/apple-touch-icon.png',
   './icons/icon-192.png',
   './icons/icon-512.png'
 ];

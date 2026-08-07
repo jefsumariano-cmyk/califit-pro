@@ -125,17 +125,6 @@ function normalizarConfigCarga(config={},equipamento=''){
   const tipo=c.tipo==='ajustavel'?'ajustavel':pesos.length>1?'lista':(pesos.length===1||peso)?'fixo':(c.tipo||'');
   return{...c,tipo,pesos,peso,min:minimo,max:maximo,incremento};
 }
-function valoresConfiguraveisCarga(config={}){
-  const c=normalizarConfigCarga(config);
-  if(c.pesos.length) return c.pesos;
-  if(c.tipo==='ajustavel'&&c.min>0&&c.max>=c.min&&c.incremento>0){
-    const valores=[];
-    for(let v=c.min;v<=c.max+1e-9&&valores.length<100;v+=c.incremento) valores.push(+v.toFixed(3));
-    return valores;
-  }
-  if(c.tipo!=='ajustavel'&&c.peso>0) return [c.peso];
-  return [];
-}
 function obterCargasEquipamento(perfil=ST.perfil,equipamento=''){
   const chave=normalizarEquipamentoNome(equipamento);
   const mapas=[perfil?.cargasEquipamentos,perfil?.cargas,perfil?.pesosEquipamentos].filter(v=>v&&typeof v==='object');
@@ -230,18 +219,6 @@ function sugerirResistenciaElastico(exercicio,perfil=ST.perfil){
   if(preventivo) return perfil?.nivel==='init'||temDorRelacionada?'leve':'leve a moderada';
   if(temDorRelacionada) return 'leve';
   return perfil?.nivel==='init'?'leve a moderada':'moderada';
-}
-function linhasResistenciaElastico(exercicio,perfil=ST.perfil){
-  if(!usaElasticoExercicio(exercicio)) return [];
-  const niveis=niveisElasticoPerfil(perfil);
-  const linhas=niveis.length
-    ? [{label:'Resistências disponíveis',texto:fraseListaHumana(niveis)}]
-    : [{label:'Resistência não cadastrada',texto:`Use uma resistência leve/moderada e ajuste pelo ${rotuloRpeUsuario()}.`}];
-  linhas.push({label:'Resistência sugerida',texto:sugerirResistenciaElastico(exercicio,perfil)});
-  if(niveis.length===1&&normTxt(niveis[0])==='forte'&&(perfil?.nivel==='init'||flagsSegurancaPerfil(perfil).dorOmbro||flagsSegurancaPerfil(perfil).dorCervical||flagsSegurancaPerfil(perfil).dorPunho)){
-    linhas.push({label:'Atenção',texto:`Resistência disponível pode ser alta para este contexto. Use apenas se mantiver técnica e ${rotuloRpeUsuario()} adequado.`});
-  }
-  return linhas;
 }
 function resumoResistenciaElastico(exercicio,perfil=ST.perfil){
   return linhasResistenciaElastico(exercicio,perfil).map(l=>`${l.label}: ${l.texto}`).join(' ');
@@ -5318,6 +5295,131 @@ const _observadorTipoBotoesCalifit=typeof MutationObserver==='function'
 normalizarTipoBotoesCalifit(document);
 _observadorTipoBotoesCalifit?.observe?.(document.body,{childList:true,subtree:true});
 
+// 167F.1 — navegação previsível nas telas secundárias, sem alterar seus fluxos.
+const _navSecundaria167F1={pilha:[],suprimir:false,sincronizando:false,voltando:false,pendente:null,abrirDepois:''};
+function solicitarVoltaSecundaria167F1(){
+  if(_navSecundaria167F1.voltando)return;
+  _navSecundaria167F1.voltando=true;
+  history.back();
+}
+function tipoTelaSecundaria167F1(id){
+  const c=$(id+'c');
+  if(id==='m2'&&c?.querySelector('#bib-root')) return c.querySelector('#bib-back')?'biblioteca-detalhe':'biblioteca-lista';
+  if(id==='m2'&&c?.querySelector('#skill-root')) return c.querySelector('#skill-back')?'skill-detalhe':'skill-lista';
+  return `${id}-modal`;
+}
+function rotuloTelaSecundaria167F1(tipo){
+  return /^(?:biblioteca|skill)-/.test(tipo)?'Voltar':'Fechar';
+}
+function contextoTelaSecundaria167F1(id,tipo){
+  const modal=$(id),caixa=modal?.querySelector('.modal-b');
+  return{id,tipo,scrollTop:caixa?.scrollTop||0,focoSeletor:''};
+}
+function instalarCabecalhoSecundario167F1(id,tipo){
+  const c=$(id+'c');if(!c)return;
+  let nav=c.querySelector(':scope > .secondary-nav-167f1');
+  if(!nav){
+    nav=document.createElement('div');
+    nav.className='secondary-nav-167f1';
+    nav.innerHTML='<button type="button" class="secondary-nav-action-167f1"></button>';
+    c.prepend(nav);
+    nav.querySelector('button').addEventListener('click',()=>{
+      const tipoAtual=tipoTelaSecundaria167F1(id);
+      if(/-detalhe$/.test(tipoAtual)){
+        _navSecundaria167F1.suprimir=true;
+        fecharTelaSecundaria167F1(id,tipoAtual);
+        _navSecundaria167F1.suprimir=false;
+        const removida=_navSecundaria167F1.pilha.pop();
+        if(history.state?.califit167f1){_navSecundaria167F1.pendente=removida;solicitarVoltaSecundaria167F1();}
+        setTimeout(()=>{instalarCabecalhoSecundario167F1(id,tipoTelaSecundaria167F1(id));restaurarContextoSecundario167F1(_navSecundaria167F1.pilha.at(-1));},0);
+      }else mClose(id);
+    });
+  }
+  const rotulo=rotuloTelaSecundaria167F1(tipo),botao=nav.querySelector('button');
+  const texto=rotulo==='Voltar'?'← Voltar':'× Fechar';
+  if(botao.textContent!==texto)botao.textContent=texto;
+  if(botao.getAttribute('aria-label')!==rotulo)botao.setAttribute('aria-label',rotulo);
+  if(nav.dataset.tipo!==tipo)nav.dataset.tipo=tipo;
+}
+function registrarTelaSecundaria167F1(id){
+  if(_navSecundaria167F1.sincronizando)return;
+  _navSecundaria167F1.sincronizando=true;
+  try{
+    const tipo=tipoTelaSecundaria167F1(id);
+    instalarCabecalhoSecundario167F1(id,tipo);
+    if(_navSecundaria167F1.suprimir)return;
+    if(_navSecundaria167F1.voltando){_navSecundaria167F1.abrirDepois=id;return;}
+    const atual=_navSecundaria167F1.pilha.at(-1);
+    if(atual?.id===id&&atual.tipo===tipo)return;
+    const entrada=contextoTelaSecundaria167F1(id,tipo);
+    _navSecundaria167F1.pilha.push(entrada);
+    if(!history.state?.califit167f1&&!history.state?.califit167f1Base){
+      history.replaceState({...history.state,califit167f1Base:true},'');
+    }
+    history.pushState({...history.state,califit167f1:true,tipo},'');
+  }finally{_navSecundaria167F1.sincronizando=false;}
+}
+function fecharTelaSecundaria167F1(id,tipo){
+  const c=$(id+'c');
+  const voltar=tipo==='biblioteca-detalhe'?c?.querySelector('#bib-back')
+    :tipo==='skill-detalhe'?c?.querySelector('#skill-back'):null;
+  if(voltar){voltar.click();return;}
+  mClose(id);
+}
+function restaurarContextoSecundario167F1(entrada){
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    const modal=$(entrada?.id),caixa=modal?.querySelector('.modal-b');
+    if(caixa)caixa.scrollTop=entrada?.scrollTop||0;
+    const foco=entrada?.focoSeletor&&modal?.querySelector(entrada.focoSeletor);
+    if(elementoFocavel(foco))foco.focus({preventScroll:true});
+    else modal?.querySelector('.secondary-nav-action-167f1')?.focus?.({preventScroll:true});
+  }));
+}
+window.addEventListener('popstate',()=>{
+  _navSecundaria167F1.voltando=false;
+  if(_navSecundaria167F1.pendente){
+    _navSecundaria167F1.pendente=null;
+    const reabrir=_navSecundaria167F1.abrirDepois;
+    _navSecundaria167F1.abrirDepois='';
+    if(reabrir&&$(reabrir)?.classList.contains('on'))setTimeout(()=>registrarTelaSecundaria167F1(reabrir),0);
+    return;
+  }
+  const atual=_navSecundaria167F1.pilha.pop();if(!atual)return;
+  _navSecundaria167F1.suprimir=true;
+  fecharTelaSecundaria167F1(atual.id,atual.tipo);
+  setTimeout(()=>{
+    const anterior=_navSecundaria167F1.pilha.at(-1);
+    if($(atual.id)?.classList.contains('on')){
+      instalarCabecalhoSecundario167F1(atual.id,tipoTelaSecundaria167F1(atual.id));
+      restaurarContextoSecundario167F1(anterior);
+    }
+    _navSecundaria167F1.suprimir=false;
+    _navSecundaria167F1.voltando=false;
+  },0);
+});
+document.addEventListener('click',e=>{
+  const alvo=e.target.closest?.('[data-bib-det],[data-skill-no],#bib-ver-skill,#skill-ver-ex');
+  const atual=_navSecundaria167F1.pilha.at(-1);
+  if(alvo&&atual){
+    atual.scrollTop=alvo.closest('.modal')?.querySelector('.modal-b')?.scrollTop||0;
+    if(alvo.dataset.bibDet)atual.focoSeletor=`[data-bib-det="${CSS.escape(alvo.dataset.bibDet)}"]`;
+    else if(alvo.dataset.skillNo)atual.focoSeletor=`[data-skill-no="${CSS.escape(alvo.dataset.skillNo)}"]`;
+    else atual.focoSeletor=`#${alvo.id}`;
+  }
+  const voltar=e.target.closest?.('#bib-back,#skill-back');
+  if(voltar&&!_navSecundaria167F1.suprimir&&history.state?.califit167f1){
+    e.preventDefault();e.stopImmediatePropagation();solicitarVoltaSecundaria167F1();
+  }
+},true);
+['m1c','m2c'].forEach(cid=>{
+  const c=$(cid);if(!c||typeof MutationObserver!=='function')return;
+  new MutationObserver(()=>{
+    const id=cid.slice(0,-1),m=$(id);
+    if(m?.classList.contains('on'))registrarTelaSecundaria167F1(id);
+  }).observe(c,{childList:true,subtree:true});
+});
+// fim 167F.1 — navegação de telas secundárias
+
 function mOpen(id,html){
   const c=$(id+'c'),m=$(id);
   if(c){
@@ -5336,11 +5438,16 @@ function mOpen(id,html){
       requestAnimationFrame(()=>{caixa.scrollTop=0;caixa.scrollLeft=0;});
     }
     atualizarBloqueioRolagemModalCalifit();
+    registrarTelaSecundaria167F1(id);
     setTimeout(()=>focarModal(id),30);
   }
 }
 function mClose(id){
   const m=$(id);if(!m)return;
+  if(!_navSecundaria167F1.suprimir&&history.state?.califit167f1&&_navSecundaria167F1.pilha.at(-1)?.id===id){
+    _navSecundaria167F1.pendente=_navSecundaria167F1.pilha.pop();
+    solicitarVoltaSecundaria167F1();
+  }
   m.classList.remove('on');
   atualizarBloqueioRolagemModalCalifit();
   for(let i=_modalFocusStack.length-1;i>=0;i--){
@@ -5538,11 +5645,11 @@ function normalizarProximoTimerCalifit(proximo){
 }
 let _tmr={
   id:null,total:0,remaining:0,nome:'',tipo:'execucao',endAt:0,
-  pausado:false,pausedRemaining:0,concluido:false,proximo:null,iniciadoEm:0
+  pausado:false,pausedRemaining:0,concluido:false,proximo:null,iniciadoEm:0,timerActive:false
 };
 function estadoTimerCalifit(){
   return{
-    ativo:!!_tmr.total,
+    ativo:_tmr.timerActive===true,
     visivel:!!$('tf')?.classList.contains('on'),
     total:_tmr.total,
     restante:_tmr.pausado?_tmr.pausedRemaining:_tmr.remaining,
@@ -5568,11 +5675,20 @@ function atualizarIdentidadeTimerCalifit(){
     tf.setAttribute('aria-label',`Cronômetro de ${rotulo.toLowerCase()}: ${_tmr.nome||'treino'}`);
   }
 }
+function definirVisibilidadeTimerCalifit(ativo){
+  const tf=$('tf');if(!tf)return;
+  const visivel=ativo===true;
+  tf.classList.toggle('on',visivel);
+  tf.setAttribute('aria-hidden',visivel?'false':'true');
+  try{tf.inert=!visivel;}catch{}
+  if(!visivel) tf.removeAttribute('aria-label');
+  atualizarTopOffsetCalifit();
+}
 function pararTimer(fechar=false){
   if(_tmr.id) clearInterval(_tmr.id);
   _tmr={
     id:null,total:0,remaining:0,nome:'',tipo:'execucao',endAt:0,
-    pausado:false,pausedRemaining:0,concluido:false,proximo:null,iniciadoEm:0
+    pausado:false,pausedRemaining:0,concluido:false,proximo:null,iniciadoEm:0,timerActive:false
   };
   const tf=$('tf'),tfv=$('tf-v'),tfp=$('tf-pf'),tfb=$('tf-btn'),tfn=$('tf-n');
   if(tfv) tfv.textContent='0:00';
@@ -5582,9 +5698,8 @@ function pararTimer(fechar=false){
   if(tf){
     delete tf.dataset.timerTipo;
     tf.classList.remove('timer-execucao','timer-descanso');
-    tf.removeAttribute('aria-label');
-    if(fechar) tf.classList.remove('on');
   }
+  definirVisibilidadeTimerCalifit(false);
 }
 function atualizarTimerUI(){
   const tfv=$('tf-v'),tfp=$('tf-pf'),tfb=$('tf-btn');
@@ -5647,10 +5762,10 @@ function startTimer(sec,nome,opts={}){
     id:null,total,remaining:total,nome:String(nome||'Treino').trim(),tipo,
     endAt:Date.now()+total*1000,pausado:false,pausedRemaining:0,
     concluido:false,proximo:normalizarProximoTimerCalifit(opts.proximo),
-    iniciadoEm:Date.now()
+    iniciadoEm:Date.now(),timerActive:true
   };
-  const tf=$('tf'),tfv=$('tf-v'),tfp=$('tf-pf');
-  if(tf) tf.classList.add('on');
+  const tfv=$('tf-v'),tfp=$('tf-pf');
+  definirVisibilidadeTimerCalifit(true);
   if(tfv) tfv.textContent=fmt(total);
   if(tfp) tfp.style.width='0';
   atualizarTimerUI();
@@ -5752,15 +5867,6 @@ function definirBlocoDetalhes(botao,painel,aberto){
   painel.classList.toggle('open',aberto);
   botao.setAttribute('aria-expanded',String(aberto));
   botao.textContent=aberto?(botao.dataset.labelClose||'Ocultar detalhes'):(botao.dataset.labelOpen||'Adicionar detalhes');
-}
-function quantidadeCargasInformadas(cargas={}){
-  return Object.values(cargas||{}).reduce((total,v)=>{
-    const c=normalizarConfigCarga(v);
-    const valores=valoresConfiguraveisCarga(c).length;
-    const maxAjustavel=c.tipo==='ajustavel'&&!valores&&c.max>0?1:0;
-    const niveis=arr(c.niveis).filter(Boolean).length;
-    return total+valores+maxAjustavel+niveis;
-  },0);
 }
 function temCargasSalvas(perfil=ST.perfil){
   return quantidadeCargasInformadas(perfil.cargasEquipamentos)>0;
@@ -5866,127 +5972,6 @@ function hidratarOnboardingDoPerfil(){
   Object.entries(valores).forEach(([id,v])=>{if($(id)&&v!=null)$(id).value=v;});
   Object.entries(p.marcas||{}).forEach(([k,v])=>{const ids={flexoes:'ob-m-flexoes',barras:'ob-m-barras',dips:'ob-m-dips',agachamentoUnilateral:'ob-m-agachamento',prancha:'ob-m-prancha',lSit:'ob-m-lsit'};if($(ids[k])&&v)$(ids[k]).value=v;});
   syncOnboardingSegmentedControls();
-}
-function renderCamposCargas(container,prefix,perfil=ST.perfil){
-  if(!container) return;
-  container.classList.add('cargas-form');
-  const eq=new Set(normalizarEquipamentos(perfil.equipamentos));
-  const c=perfil.cargasEquipamentos||{};
-  const linhas=[];
-  const ajudaEquip={
-    'Mochila lastrada':'Mochila com peso dentro, usada como carga improvisada. A estabilidade pode variar.',
-    'Colete com peso':'Colete próprio para treino, com carga distribuída no tronco.',
-    'Cinto de carga':'Cinto usado para pendurar anilhas em barras e paralelas. Só entra no plano com base técnica e estrutura compatível.',
-    'Pesos de tornozelo':'Informe o peso de cada tornozeleira, não a soma do par.'
-  };
-  const ajuda=k=>ajudaEquip[k]?`<div class="form-help">${ajudaEquip[k]}</div>`:'';
-  const idCarga=k=>`${prefix}-carga-${k.replace(/\W+/g,'-').toLowerCase()}`;
-  const decisaoSemPeso=k=>{
-    const cfg=c[k]||{};
-    return `<label class="carga-pendente carga-pendente-opcao"><input type="checkbox" id="${prefix}-carga-ignorar-${k.replace(/\W+/g,'-').toLowerCase()}" ${cfg.ignorarSemPeso?'checked':''}><span>Não sei o peso / não usar este equipamento agora. Este equipamento ficará disponível no perfil, mas não será usado no plano até você informar o peso.</span></label>`;
-  };
-  const campoLista=(k,label,placeholder='Ex: 8; 12; 16')=>{if(eq.has(k))linhas.push(`<div><label class="${prefix==='ob'?'ob-l':'fl'}">${label}</label><input class="${prefix==='ob'?'oi':'fi'}" id="${idCarga(k)}" value="${escHtml(arr(c[k]?.pesos).join('; '))}" placeholder="${placeholder}">${ajuda(k)}${decisaoSemPeso(k)}</div>`);};
-  const campoUnico=(k,label,placeholder)=>{if(eq.has(k))linhas.push(`<div><label class="${prefix==='ob'?'ob-l':'fl'}">${label}</label><input class="${prefix==='ob'?'oi':'fi'}" id="${idCarga(k)}" inputmode="decimal" value="${c[k]?.peso||arr(c[k]?.pesos)[0]||''}" placeholder="${placeholder}">${ajuda(k)}${decisaoSemPeso(k)}</div>`);};
-  const campoAjustavel=(k,label)=>{
-    if(!eq.has(k)) return;
-    const cfg=normalizarConfigCarga(c[k],k);
-    linhas.push(`<div class="${prefix==='ob'?'ob-group':'info ib'}">
-      <label class="${prefix==='ob'?'ob-l':'fl'}">${label}</label>
-      ${ajuda(k)}
-      <select class="${prefix==='ob'?'os':'fi'}" id="${prefix}-carga-tipo-${k.replace(/\W+/g,'-').toLowerCase()}">
-        <option value="lista"${cfg.tipo!=='ajustavel'?' selected':''}>Lista de cargas reais</option>
-        <option value="ajustavel"${cfg.tipo==='ajustavel'?' selected':''}>Equipamento ajustável</option>
-      </select>
-      <label class="${prefix==='ob'?'ob-l':'fl'}">Cargas realmente configuráveis (kg)</label>
-      <input class="${prefix==='ob'?'oi':'fi'}" id="${prefix}-carga-${k.replace(/\W+/g,'-').toLowerCase()}" value="${escHtml((cfg.pesos.length?cfg.pesos:(cfg.tipo!=='ajustavel'&&cfg.peso?[cfg.peso]:[])).join('; '))}" placeholder="Ex: 2; 4; 6; 8; 10">
-      <div class="r2">
-        <div><label class="${prefix==='ob'?'ob-l':'fl'}">Mínima (kg)</label><input class="${prefix==='ob'?'oi':'fi'}" id="${prefix}-carga-min-${k.replace(/\W+/g,'-').toLowerCase()}" type="number" min="0" step="0.1" value="${cfg.min||''}"></div>
-        <div><label class="${prefix==='ob'?'ob-l':'fl'}">Máxima (kg)</label><input class="${prefix==='ob'?'oi':'fi'}" id="${prefix}-carga-max-${k.replace(/\W+/g,'-').toLowerCase()}" type="number" min="0" step="0.1" value="${cfg.max||((cfg.tipo==='ajustavel'&&cfg.peso)?cfg.peso:'')}"></div>
-      </div>
-      <label class="${prefix==='ob'?'ob-l':'fl'}">Incremento conhecido (kg)</label>
-      <input class="${prefix==='ob'?'oi':'fi'}" id="${prefix}-carga-inc-${k.replace(/\W+/g,'-').toLowerCase()}" type="number" min="0" step="0.1" value="${cfg.incremento||''}" placeholder="Opcional">
-      ${decisaoSemPeso(k)}
-    </div>`);
-  };
-  campoLista('Kettlebell','Kettlebell: pesos disponíveis (kg)');
-  campoAjustavel('Halteres','Halteres');
-  campoLista('Medicine Ball','Medicine Ball: pesos disponíveis (kg)');
-  campoUnico('Mochila lastrada','Mochila lastrada: carga disponível (kg)','Ex: 10,5');
-  campoLista('Pesos de tornozelo','Pesos de tornozelo: peso por tornozeleira (kg)','Ex: 0,5; 1; 2');
-  campoLista('Cinto de carga','Cinto de carga: pesos disponíveis (kg)','Ex: 5; 10; 15');
-  campoAjustavel('Colete com peso','Colete com peso');
-  if(eq.has('Elásticos/faixas de resistência')) linhas.push(`<div><label class="${prefix==='ob'?'ob-l':'fl'}">Resistências dos elásticos</label><div id="${prefix}-elasticos">${['leve','medio','forte'].map(v=>`<button type="button" class="${prefix==='ob'?'oc':'chip'}${arr(c['Elásticos/faixas de resistência']?.niveis).includes(v)?' on':''}" data-elastico="${v}">${v==='medio'?'Médio':v[0].toUpperCase()+v.slice(1)}</button>`).join('')}</div></div>`);
-  const titulo=prefix==='pp'?'<div class="mini-label">Pesos e resistências disponíveis</div>':'';
-  const aviso=avisoEquipamentosCargaPendenteHtml(perfil);
-  const avisoOb=prefix==='ob'&&linhas.length?'<div class="ob-info" style="margin-bottom:10px">Alguns equipamentos com carga precisam de peso para entrar no plano. Informe o peso agora ou marque “não usar este equipamento agora”.</div>':'';
-  container.innerHTML=titulo+aviso+avisoOb+(linhas.length?linhas.join(''):'<div class="ms">Selecione um equipamento com carga para informar pesos ou resistências.</div>');
-  container.querySelectorAll('[data-elastico]').forEach(b=>b.addEventListener('click',()=>{
-    b.classList.toggle('on');
-    if(prefix==='ob') atualizarResumosDivulgacaoOnboarding();
-  }));
-  if(prefix==='ob') container.querySelectorAll('input,select').forEach(el=>{
-    el.addEventListener('input',atualizarResumosDivulgacaoOnboarding);
-    el.addEventListener('change',atualizarResumosDivulgacaoOnboarding);
-  });
-}
-function coletarCargasFormulario(prefix,perfil=ST.perfil){
-  const out={...(perfil.cargasEquipamentos||{})};
-  const ignorar=(k,temCarga=false)=>!temCarga&&!!$(`${prefix}-carga-ignorar-${k.replace(/\W+/g,'-').toLowerCase()}`)?.checked;
-  const ids={'Kettlebell':'kettlebell','Medicine Ball':'medicine-ball','Mochila lastrada':'mochila-lastrada','Pesos de tornozelo':'pesos-de-tornozelo','Cinto de carga':'cinto-de-carga'};
-  Object.entries(ids).forEach(([k,id])=>{
-    const el=$(`${prefix}-carga-${id}`);if(!el)return;
-    if(k==='Mochila lastrada'){
-      const r=parseCargaUnica(el.value,k);const peso=r.valido?(r.valor||0):0;out[k]={peso,ignorarSemPeso:ignorar(k,!!peso)};
-    }else{
-      const r=parseListaCargas(el.value,k);const pesos=r.valido?r.valores:[];out[k]={pesos,ignorarSemPeso:ignorar(k,pesos.length>0)};
-    }
-  });
-  ['Halteres','Colete com peso'].forEach(k=>{
-    const id=k.replace(/\W+/g,'-').toLowerCase();
-    const lista=$(`${prefix}-carga-${id}`);
-    if(!lista) return;
-    const pesos=parseListaCargas(lista.value,k).valores||[];
-    const min=parseCargaUnica($(`${prefix}-carga-min-${id}`)?.value,k).valor||0;
-    const max=parseCargaUnica($(`${prefix}-carga-max-${id}`)?.value,k).valor||0;
-    out[k]={
-      tipo:$(`${prefix}-carga-tipo-${id}`)?.value||'lista',
-      pesos,
-      min,
-      max,
-      incremento:parseIncrementoCarga($(`${prefix}-carga-inc-${id}`)?.value).valor||0,
-      ignorarSemPeso:ignorar(k,pesos.length>0||!!min||!!max)
-    };
-  });
-  const elast=[...document.querySelectorAll(`#${prefix}-elasticos [data-elastico].on`)].map(b=>b.dataset.elastico);
-  if($(`${prefix}-elasticos`)) out['Elásticos/faixas de resistência']={niveis:elast};
-  return out;
-}
-function validarCargasFormulario(prefix){
-  const listas={'Kettlebell':'kettlebell','Medicine Ball':'medicine-ball','Halteres':'halteres','Colete com peso':'colete-com-peso','Pesos de tornozelo':'pesos-de-tornozelo','Cinto de carga':'cinto-de-carga'};
-  for(const [equip,idCurto] of Object.entries(listas)){
-    const id=`${prefix}-carga-${idCurto}`;
-    const el=$(id);if(!el) continue;
-    const r=parseListaCargas(el.value,equip);
-    if(!r.valido){showToast(r.mensagem);el.focus?.();return false;}
-  }
-  const mochila=$(`${prefix}-carga-mochila-lastrada`);
-  if(mochila){
-    const r=parseCargaUnica(mochila.value,'Mochila lastrada');
-    if(!r.valido){showToast(r.mensagem);mochila.focus?.();return false;}
-  }
-  for(const [equip,idCurto] of Object.entries({'Halteres':'halteres','Colete com peso':'colete-com-peso'})){
-    for(const campo of ['min','max']){
-      const el=$(`${prefix}-carga-${campo}-${idCurto}`);if(!el) continue;
-      const r=parseCargaUnica(el.value,equip);
-      if(!r.valido){showToast(r.mensagem);el.focus?.();return false;}
-    }
-  }
-  for(const id of [`${prefix}-carga-inc-halteres`,`${prefix}-carga-inc-colete-com-peso`]){
-    const el=$(id);if(!el) continue;
-    const r=parseIncrementoCarga(el.value);
-    if(!r.valido){showToast(r.mensagem);el.focus?.();return false;}
-  }
-  return true;
 }
 function renderDetalhesLimitacoes(container,prefix,perfil=ST.perfil){
   if(!container)return;
@@ -6956,11 +6941,37 @@ function treinoContaParaProgressao(registroTreino){
   if(registroTreino.progressaoIgnorada||registroTreino.treino?.progressaoIgnorada) return false;
   return checkinMinimoCompleto(registroTreino);
 }
+// 167G.8 — separa feedback completo de aumento automático.
+// Um treino completo alimenta a avaliação da próxima semana, mas dor, esforço alto
+// ou fatores de cautela podem impedir/reduzir a progressão mesmo com o check-in completo.
+function avaliacaoProgressaoRegistroCalifit(registroTreino={}){
+  const treino=registroTreino?.treino||registroTreino||{};
+  const exercicios=arr(treino.exercicios||registroTreino?.exercicios||[]);
+  const status=statusGeralCheckinCalifit(registroTreino?.statusGeral||treino.statusGeral,exercicios);
+  if(status==='nao') return{texto:'Sem progressão · Treino não realizado',curto:'Treino não realizado · sem progressão',classe:'ib',motivo:'nao_realizado'};
+  if(status==='parcial') return{texto:'Sem progressão · Treino parcial',curto:'Treino parcial · sem progressão',classe:'ib',motivo:'parcial'};
+  if(registroTreino?.feedbackDivergente||treino.feedbackDivergente) return{texto:'Sem progressão · Feedback divergente',curto:'Feedback divergente · sem progressão',classe:'io',motivo:'divergente'};
+  if(!checkinMinimoCompleto(registroTreino)) return{texto:'Sem progressão · Feedback incompleto',curto:'Feedback incompleto · sem progressão',classe:'ib',motivo:'incompleto'};
+  const q=qualidadeFeedbackTreino(registroTreino);
+  if(q.dorRelevante||q.piora) return{texto:'Feedback completo · Sem aumento automático por dor relevante',curto:'Dor relevante · sem aumento automático',classe:'io',motivo:'dor_relevante'};
+  if(q.dorLeve) return{texto:'Feedback completo · Progressão condicionada à ausência de dor',curto:'Dor leve · progressão condicionada',classe:'ib',motivo:'dor_leve'};
+  if(q.pesado) return{texto:'Feedback completo · Progressão conservadora por esforço alto',curto:'Esforço alto · progressão conservadora',classe:'ib',motivo:'esforco_alto'};
+  if(q.ignorada) return{texto:'Feedback completo · Sem progressão automática',curto:'Sem progressão automática',classe:'ib',motivo:'ignorada'};
+  if(cirurgiaTemLimitacaoAtiva(ST?.perfil||{})) return{texto:'Feedback completo · Progressão condicionada à recuperação',curto:'Recuperação ativa · progressão condicionada',classe:'ib',motivo:'recuperacao'};
+  return{texto:'Feedback completo · Disponível para avaliação da próxima semana',curto:'Feedback completo · avaliação na próxima semana',classe:'ig',motivo:'disponivel'};
+}
 function statusProgressaoPorCheckin(registroTreino){
-  const status=statusGeralCheckinCalifit(registroTreino?.statusGeral||registroTreino?.treino?.statusGeral,registroTreino?.treino?.exercicios||[]);
-  if(status==='nao') return 'Sem progressão · Treino não realizado';
-  if(status==='parcial') return 'Sem progressão · Treino parcial';
-  return treinoContaParaProgressao(registroTreino)?'Feedback completo':'Sem progressão · Feedback incompleto';
+  return avaliacaoProgressaoRegistroCalifit(registroTreino).texto;
+}
+function resumoStatusRegistroTreinoCalifit(registroTreino={}){
+  const treino=registroTreino?.treino||registroTreino||{};
+  const exercicios=arr(treino.exercicios||registroTreino.exercicios||[]);
+  const registrados=exercicios.filter(e=>['sim','parcial','nao'].includes(normTxt(e?.log?.feito||e?.feito||''))).length;
+  const status=statusGeralCheckinCalifit(registroTreino?.statusGeral||treino.statusGeral,exercicios);
+  const partes=[`Status: ${rotuloStatusGeralCheckinCalifit(status)}`];
+  if(registrados) partes.push(`${registrados} exercício${registrados===1?'':'s'} com status registrado${registrados===1?'':'s'}`);
+  partes.push(avaliacaoProgressaoRegistroCalifit(registroTreino).texto);
+  return partes.join(' · ');
 }
 function qualidadeFeedbackTreino(registroTreino={}){
   const checkin=checkinMinimoTreino(registroTreino);
@@ -6985,12 +6996,11 @@ function qualidadeFeedbackTreino(registroTreino={}){
   const observacao=normTxt(logs.map(l=>[l.obs,l.observacoes,l.continuar].filter(Boolean).join(' ')).join(' '));
   const piora=/pior|piorou|agravou|insegur|formig|travou/.test(observacao);
   const ignorada=registroTreino.progressaoIgnorada||registroTreino.treino?.progressaoIgnorada;
+  const divergente=!!(registroTreino.feedbackDivergente||registroTreino.treino?.feedbackDivergente);
   const aquecimentoConcluido=!!(registroTreino.aquecimentoConcluido||registroTreino.treino?.aquecimentoConcluido);
-  const detalhados=logs.filter(l=>l.feito&&(
-    arr(l.series).length||l.reps||l.rpe||l.dor||l.tecnica||l.obs||l.observacoes
-  )).length;
+  const detalhados=logs.filter(l=>l.feito&&logTemDadosDetalhados(l)).length;
   const detalhesSuficientes=detalhados>=Math.max(1,Math.ceil(Math.max(logs.length,1)*.6));
-  return{checkin,completo,dorLeve,dorRelevante,pesado,execucoes,concluidos,parciais,naoFez,acimaSemFeedback,piora,ignorada,aquecimentoConcluido,detalhados,detalhesSuficientes,totalExercicios:logs.length};
+  return{checkin,completo,dorLeve,dorRelevante,pesado,execucoes,concluidos,parciais,naoFez,acimaSemFeedback,piora,ignorada,divergente,aquecimentoConcluido,detalhados,detalhesSuficientes,totalExercicios:logs.length};
 }
 function avaliarConfiancaFeedbackCalifit(registroTreino={},perfil=ST?.perfil||{}){
   const q=qualidadeFeedbackTreino(registroTreino);
@@ -7006,10 +7016,11 @@ function avaliarConfiancaFeedbackCalifit(registroTreino={},perfil=ST?.perfil||{}
     ausentes.push('check-in geral completo');
   }
   if(q.dorRelevante||q.piora)riscos.push('dor ou piora relevante');
+  if(q.divergente)riscos.push('feedback geral divergente dos exercícios');
   if(cirurgiaTemLimitacaoAtiva(perfil))riscos.push('cirurgia/recuperação ativa');
   if(q.parciais||q.naoFez)riscos.push('execução parcial ou não realizada');
   if(q.pesado)riscos.push('esforço alto ou dificuldade elevada');
-  const bloqueada=!!(q.ignorada||q.dorRelevante||q.piora||cirurgiaTemLimitacaoAtiva(perfil));
+  const bloqueada=!!(q.ignorada||q.divergente||q.dorRelevante||q.piora||cirurgiaTemLimitacaoAtiva(perfil));
   let nivel='baixa';
   if(!bloqueada&&!q.parciais&&!q.naoFez){
     if(q.completo&&q.detalhesSuficientes)nivel='alta';
@@ -7606,6 +7617,55 @@ function lEx(n,k,v){
   salvar();
 }
 
+// 167G.5 — registro rápido por exceção sem inventar dados executados.
+// “Feito como planejado” preserva a prescrição no histórico, mas continua
+// classificado como registro simples até o usuário informar detalhes reais.
+function limparDadosPlanejadosRegistroRapidoCalifit(log={}){
+  const novo={...(log||{})};
+  if(novo.registroPorExcecao||novo.dadosPresumidos){
+    ['series','reps','seriesPlanejadas','repsPlanejadas','prescricaoPlanejada',
+      'cargaPlanejadaKg','registroPorExcecao','dadosPresumidos'].forEach(k=>delete novo[k]);
+    if(novo.cargaOrigem==='planejada'){delete novo.cargaKg;delete novo.cargaOrigem;}
+  }
+  return novo;
+}
+function registrarExercicioComoPlanejadoCalifit(ex){
+  const anterior=limparDadosPlanejadosRegistroRapidoCalifit(ST.exec[ex.n]||{});
+  const qtdSeries=Math.max(1,+ex?.s||1);
+  const repsPlanejadas=String(ex?.r||'').trim();
+  const series=repsPlanejadas
+    ?Array.from({length:qtdSeries},()=>({reps:repsPlanejadas,origem:'planejado'}))
+    :[];
+  const cargaPlanejada=cargaPlanejadaExercicio(ex);
+  const registro={
+    ...anterior,
+    feito:'sim',
+    registroPorExcecao:true,
+    dadosPresumidos:true,
+    prescricaoPlanejada:prescricaoEx(ex),
+    seriesPlanejadas:+ex?.s||qtdSeries,
+    repsPlanejadas,
+    series,
+    reps:repsPlanejadas
+  };
+  if(cargaPlanejada){
+    registro.cargaKg=cargaPlanejada;
+    registro.cargaPlanejadaKg=cargaPlanejada;
+    registro.cargaOrigem='planejada';
+  }
+  ST.exec[ex.n]=registro;
+  salvar();
+}
+function definirStatusRapidoExercicioCalifit(ex,status){
+  if(status==='sim'){
+    registrarExercicioComoPlanejadoCalifit(ex);
+    return;
+  }
+  const atual=limparDadosPlanejadosRegistroRapidoCalifit(ST.exec[ex.n]||{});
+  ST.exec[ex.n]={...atual,feito:status};
+  salvar();
+}
+
 function prescricaoEx(ex){return `${ex?.s||''}x${ex?.r||''}`.replace(/^x|x$/g,'')||'';}
 const EX_INFO={
   'Remada Invertida':{sub:'puxada com o corpo inclinado',equip:'barra baixa, argolas, TRX ou mesa firme',carga:'peso corporal',passos:['Segure o apoio com o corpo inclinado e reto.','Puxe o peito em direção ao apoio.','Desça devagar em 3 segundos.'],dica:'Mantenha os ombros firmes para trás e para baixo.',erro:'Deixar o quadril cair ou puxar só com os braços.',reg:'Remada com elástico, se não houver apoio seguro.'},
@@ -7741,7 +7801,7 @@ function responderSkillTreeTreinadorCalifit(...args){
 
 function cardAcessoBibliotecaHtml(){
   return `<details class="card ui-disclosure explore-hoje" id="card-biblioteca-exercicios">
-    <summary>Explorar exercícios e habilidades</summary>
+    <summary><span class="ui-disclosure-title">${iconeCalifit('biblioteca')}<span>Explorar exercícios e habilidades</span></span></summary>
     <div class="ui-disclosure-body"><div class="ui-disclosure-content">
     <div class="h3">${tituloIcone('biblioteca','Explorar')}</div>
     <div class="ms" style="margin-bottom:8px">Consulte execução, músculos, regressões, progressões e caminhos de habilidade.</div>
@@ -7765,8 +7825,19 @@ function rolarParaTreinoHoje(){
   const alvo=$('treino-hoje-card')||document.querySelector('.bloco');
   if(!alvo)return;
   alvo.tabIndex=-1;
-  alvo.scrollIntoView?.({behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?'auto':'smooth',block:'start'});
+  const sec=alvo.closest('.sec')||secaoAtivaCalifit();
+  sec?.scrollTo?.({top:Math.max(0,alvo.offsetTop-12),behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?'auto':'smooth'});
   requestAnimationFrame(()=>alvo.focus?.({preventScroll:true}));
+}
+function abrirHojeSemQuebrarRolagemCalifit(){
+  _scrollAbasCalifit.set('s0',0);
+  goTab(0);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    const sec=$('s0');
+    if(sec){sec.scrollTop=0;sec.scrollLeft=0;}
+    normalizarRolagemDocumentoCalifit();
+    $('btn-acao-hoje-principal')?.focus?.({preventScroll:true});
+  }));
 }
 function renderizarLembretesHojeCalifit(container=null,agoraOpcional,opts={}){
   const alvo=container||$('s0');
@@ -7818,13 +7889,8 @@ function acionarLembreteCalifit(tipo,item=null){
   if(tipo==='treinoHoje'){
     mClose('m2');
     const dia=ST.plano?.dias?.[new Date().getDay()];
-    if(!dia||dia.tipo==='descanso'){goTab(0);showToast('Hoje não há treino planejado. Veja a semana.');return;}
-    goTab(0);
-    setTimeout(()=>{
-      const alvo=$('treino-hoje-card')||document.querySelector('.bloco');
-      alvo?.scrollIntoView?.({behavior:'smooth',block:'start'});
-      alvo?.focus?.();
-    },120);
+    abrirHojeSemQuebrarRolagemCalifit();
+    if(!dia||dia.tipo==='descanso') showToast('Hoje não há treino planejado. Veja a semana.');
     return;
   }
   if(tipo==='checkin'){mClose('m2');goTab(1);setTimeout(()=>$('btn-checkin-sem')?.click(),80);return;}
@@ -7841,16 +7907,16 @@ function abrirCentralLembretesCalifit(agoraOpcional){
     <div class="ms" style="margin-bottom:8px">${escHtml(l.texto)}</div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
       ${disp?`<button class="btn btn-s btn-sm" type="button" data-lembrete-reativar="${escHtml(l.tipo)}" style="margin:0">Reativar hoje</button>`:`<button class="btn btn-s btn-sm" type="button" data-lembrete-central-acao="${escHtml(l.tipo)}" style="margin:0">${escHtml(l.acao)}</button>`}
-      ${disp?'<span></span>':`<button class="btn btn-s btn-sm" type="button" data-lembrete-central-adiar="${escHtml(l.tipo)}" style="margin:0">Adiar</button>`}
-      <button class="btn btn-s btn-sm" type="button" data-lembrete-central-dismiss="${escHtml(l.tipo)}" style="margin:0">${disp?'Manter dispensado':'Dispensar hoje'}</button>
+      ${disp?'<span></span>':`<button class="btn btn-s btn-sm" type="button" data-lembrete-central-adiar="${escHtml(l.tipo)}" style="margin:0">Lembrar depois</button>`}
+      <button class="btn btn-s btn-sm${disp?' reminder-secondary-link':''}" type="button" data-lembrete-central-dismiss="${escHtml(l.tipo)}" style="margin:0">${disp?'Manter dispensado':'Dispensar hoje'}</button>
     </div>
   </div>`;
   mOpen('m2',`<div id="central-lembretes">
     <div class="mt2">${tituloIcone('lembretes','Central de lembretes')}</div>
     <div class="ms">Lembretes locais do app. Eles não alteram seu plano automaticamente.</div>
     ${dados.ativos.length?`<div class="h3">${tituloIcone('checkin','Pendentes')}</div><div style="display:grid;gap:8px">${dados.ativos.map(l=>cardItem(l,false)).join('')}</div>`:'<div class="info ig">Sem lembretes pendentes agora.</div>'}
-    <div class="h3">${tituloIcone('descanso','Dispensados hoje')}</div>
-    ${dados.dispensadosHoje.length?`<div style="display:grid;gap:8px">${dados.dispensadosHoje.map(l=>cardItem(l,true)).join('')}</div>`:'<div class="info ib">Nenhum lembrete dispensado hoje.</div>'}
+    <details class="dismissed-reminders"><summary>Dispensados hoje (${dados.dispensadosHoje.length}) — Ver</summary>
+    ${dados.dispensadosHoje.length?`<div style="display:grid;gap:8px;margin-top:8px">${dados.dispensadosHoje.map(l=>cardItem(l,true)).join('')}</div>`:'<div class="info ib" style="margin-top:8px">Nenhum lembrete dispensado hoje.</div>'}</details>
     <button class="btn btn-s" id="central-lembretes-fechar" type="button">Fechar</button>
   </div>`);
   document.querySelectorAll('[data-lembrete-central-acao]').forEach(btn=>btn.addEventListener('click',()=>acionarLembreteCalifit(btn.dataset.lembreteCentralAcao)));
@@ -8964,8 +9030,12 @@ function normalizarRegistroExercicio(ex,meta={}){
 }
 function logTemDadosDetalhados(log){
   const l=log||{};
-  const series=Array.isArray(l.series)?l.series:[];
-  return series.length||l.reps||l.rpe||l.dor||l.tecnica||l.observacoes||l.obs||l.diff||l.cargaKg||l.cargaUsada||l.carga||l.resistenciaElastico||l.resistenciaUsada;
+  const registroRapido=!!(l.registroPorExcecao||l.dadosPresumidos);
+  const series=registroRapido?[]:(Array.isArray(l.series)?l.series:[]);
+  const reps=registroRapido?'':l.reps;
+  const cargaPresumida=registroRapido&&l.cargaOrigem==='planejada';
+  return series.length||reps||l.rpe||l.dor||l.tecnica||l.observacoes||l.obs||l.diff||
+    (!cargaPresumida&&(l.cargaKg||l.cargaUsada||l.carga))||l.resistenciaElastico||l.resistenciaUsada;
 }
 function treinoTemDadosDetalhados(treino){
   return (treino?.exercicios||[]).some(e=>logTemDadosDetalhados(e.log||e)||e.rpe||e.dor||e.tecnica||e.observacoes);
@@ -9062,6 +9132,8 @@ function abrirRegistroExercicio(ex){
     const resistenciaElastico=usaElasticoExercicio(ex)?normalizarResistenciaElastico163K($('rd-resistencia-elastico')?.value||''):'';
     const concluir=()=>{
       let registro={...(ST.exec[ex.n]||{}),feito:feito||'sim',series,dor,dorRegiao,dorDescricao,tecnica:$('rd-tec')?.value||'',observacoes:obs,obs,atencaoDor:infoDor.temDor&&(!dor||dorNegativa(dor))?rotuloDor(infoDor)||'atenção por dor nas observações':''};
+      ['registroPorExcecao','dadosPresumidos','prescricaoPlanejada','seriesPlanejadas',
+        'repsPlanejadas','cargaPlanejadaKg','cargaOrigem'].forEach(k=>delete registro[k]);
       if(aceitaCarga){if(cargaKg) registro.cargaKg=cargaKg; else delete registro.cargaKg;}
       if(usaElasticoExercicio(ex)){if(resistenciaElastico) registro.resistenciaElastico=resistenciaElastico; else delete registro.resistenciaElastico;}
       if(rpeAlterado||!log.rpeExplicito||rpeCampo!==rpeInicial) registro=sincronizarDificuldadeRpe({...registro,rpe:rpeCampo},'rpe');
@@ -9401,10 +9473,10 @@ function mkExCard(ex,i,blocoId,opts={}){
   </div>
   ${ajudaDificuldadeInicianteHtml()}
   <div class="fr">
-    <button class="chip${log.feito==='sim'?' on':''}" data-fv="sim">✅ Fiz</button>
-    <button class="chip${log.feito==='parcial'?' on':''}" data-fv="parcial">⚡ Parcial</button>
+    <button class="chip${log.feito==='sim'?' on':''}" data-fv="sim">✅ Feito como planejado</button>
+    <button class="chip${log.feito==='parcial'?' on':''}" data-fv="parcial">✏️ Fiz diferente</button>
     <button class="chip${log.feito==='nao'?' on':''}" data-fv="nao">❌ Não fiz</button>
-    <button class="btn btn-s btn-sm" style="margin-left:auto" data-regdet="${escHtml(ex.n)}">Registrar</button>
+    <button class="btn btn-s btn-sm" data-regdet="${escHtml(ex.n)}">Registrar</button>
     <button class="btn btn-s btn-sm" data-more>Como fazer</button>
   </div>
   <div class="ex-more">
@@ -9439,11 +9511,13 @@ function mkExCard(ex,i,blocoId,opts={}){
     }
   }));
   card.querySelectorAll('[data-fv]').forEach(b=>b.addEventListener('click',()=>{
-    lEx(ex.n,'feito',b.dataset.fv);
-    card.classList.toggle('done',b.dataset.fv==='sim');
-    card.classList.toggle('skip',b.dataset.fv==='nao');
-    card.querySelectorAll('[data-fv]').forEach(x=>x.classList.toggle('on',x.dataset.fv===b.dataset.fv));
-    if(b.dataset.fv==='sim') showToast('✅ '+ex.n);
+    const status=b.dataset.fv;
+    definirStatusRapidoExercicioCalifit(ex,status);
+    card.classList.toggle('done',status==='sim');
+    card.classList.toggle('skip',status==='nao');
+    card.querySelectorAll('[data-fv]').forEach(x=>x.classList.toggle('on',x.dataset.fv===status));
+    if(status==='sim') showToast('✅ Planejado registrado · '+ex.n);
+    if(status==='parcial') abrirRegistroExercicio(ex);
   }));
   card.querySelectorAll('[data-timer]').forEach(b=>b.addEventListener('click',()=>iniciarTimerPorBotaoCalifit(b)));
   card.querySelectorAll('[data-regdet]').forEach(b=>b.addEventListener('click',()=>abrirRegistroExercicio(ex)));
@@ -9493,10 +9567,10 @@ function mkBlocoSimples(ico,titulo,exs,id){
     </div>
     ${ajudaDificuldadeInicianteHtml()}
     <div class="fr">
-      <button class="chip${log.feito==='sim'?' on':''}" data-fv2="sim">✅ Fiz</button>
-      <button class="chip${log.feito==='parcial'?' on':''}" data-fv2="parcial">⚡ Parcial</button>
+      <button class="chip${log.feito==='sim'?' on':''}" data-fv2="sim">✅ Feito como planejado</button>
+      <button class="chip${log.feito==='parcial'?' on':''}" data-fv2="parcial">✏️ Fiz diferente</button>
       <button class="chip${log.feito==='nao'?' on':''}" data-fv2="nao">❌ Não fiz</button>
-      <button class="btn btn-s btn-sm" style="margin-left:auto" data-regdet2="${escHtml(ex.n)}">Registrar</button>
+      <button class="btn btn-s btn-sm" data-regdet2="${escHtml(ex.n)}">Registrar</button>
       <button class="btn btn-s btn-sm" data-more2>Como fazer</button>
     </div>
     <div class="ex-more">
@@ -9523,11 +9597,13 @@ function mkBlocoSimples(ico,titulo,exs,id){
       }
     }));
     card.querySelectorAll('[data-fv2]').forEach(b=>b.addEventListener('click',()=>{
-      const v=b.dataset.fv2;lEx(ex.n,'feito',v);
+      const v=b.dataset.fv2;
+      definirStatusRapidoExercicioCalifit(ex,v);
       card.classList.toggle('done',v==='sim');
       card.classList.toggle('skip',v==='nao');
-      card.querySelectorAll('[data-fv2]').forEach(x=>x.classList.toggle('on',x.dataset.fv2===b.dataset.fv2));
-      if(v==='sim') showToast('✅ '+ex.n);
+      card.querySelectorAll('[data-fv2]').forEach(x=>x.classList.toggle('on',x.dataset.fv2===v));
+      if(v==='sim') showToast('✅ Planejado registrado · '+ex.n);
+      if(v==='parcial') abrirRegistroExercicio(ex);
     }));
     card.querySelectorAll('[data-timer]').forEach(b=>b.addEventListener('click',()=>iniciarTimerPorBotaoCalifit(b)));
     card.querySelectorAll('[data-regdet2]').forEach(b=>b.addEventListener('click',()=>abrirRegistroExercicio(ex)));
@@ -9660,12 +9736,24 @@ function rHoje(){
     }
     rolarParaTreinoHoje();
   });
-  if(dia?.atividadesComplementares?.length) el.insertAdjacentHTML('beforeend',`<div class="info ib"><strong>Atividades complementares:</strong> ${escHtml(dia.atividadesComplementares.join(' + '))}</div>`);
+  if(dia?.atividadesComplementares?.length&&dia.tipo!=='atividade') el.insertAdjacentHTML('beforeend',`<div class="info ib"><strong>Atividades complementares:</strong> ${escHtml(dia.atividadesComplementares.join(' + '))}</div>`);
   const avisoPerfil=avisoPerfilEstimadoHtml(ST.perfil);
   if(avisoPerfil) el.insertAdjacentHTML('beforeend',avisoPerfil);
   const avisoLim=avisoLimitacoesHtml(ST.perfil);
   if(avisoLim) el.insertAdjacentHTML('beforeend',avisoLim);
-  if(dia?.nota) el.insertAdjacentHTML('beforeend',`<div class="info io plan-reason">${htmlJustificativaPlanoCalifit(dia)}</div>`);
+  if(dia?.nota){
+    const notaPlanoHoje=normTxt(dia.nota||'');
+    const resumoPlanoHoje=dia.ajusteTempo
+      ?'Treino ajustado ao tempo disponível hoje.'
+      :dia.tipo==='deload'
+        ?'Volume reduzido para favorecer recuperação.'
+        :/retorno|recuper|cirurg|dor|limit|conservador|reduz|volume menor/.test(notaPlanoHoje)
+          ?'Treino ajustado para segurança e retorno gradual.'
+          :dia.atividadesComplementares?.length
+            ?'Volume ajustado às atividades complementares da semana.'
+            :'';
+    el.insertAdjacentHTML('beforeend',`${resumoPlanoHoje?`<div class="plan-reason-summary">${escHtml(resumoPlanoHoje)}</div>`:''}<details class="card plan-reason-disclosure"><summary>Por que este treino foi montado assim?</summary><div class="info io plan-reason">${htmlJustificativaPlanoCalifit(dia)}</div></details>`);
+  }
   if(treinosAnterioresSemRegistroSemana(sem).length) el.insertAdjacentHTML('beforeend',alertaInfoHtml('Registro pendente','Há treinos anteriores sem registro nesta semana. Revise pela aba Semana.','ib'));
   if(dia?.tipo==='recuperacao'){
     el.insertAdjacentHTML('beforeend',`<div class="card"><div class="h3">${tituloIcone('descanso','Sessão de recuperação')}</div><div class="info io">${escHtml(dia.nota||'Não liberado para treino. Siga as orientações da equipe profissional.')}</div></div>`);
@@ -9981,7 +10069,7 @@ function rHoje(){
     <div class="chips" id="tempo-disponivel-hoje-opcoes">
       ${opcoesTempoHoje.map(([v,l])=>`<button type="button" class="chip${(ajusteTempoHoje?.limite||0)===v?' on':''}" data-tempo-hoje="${v}">${escHtml(l)}</button>`).join('')}
     </div>
-    ${ajusteTempoHoje?`<div class="info ib" style="margin-top:10px"><strong>Adaptação de hoje:</strong> treino ajustado para até ${ajusteTempoHoje.limite} min. Finalizar esta versão conta como treino completo.</div>`:`<div class="form-help" style="margin-top:8px">O treino completo segue o tempo habitual definido em Perfil & Plano.</div>`}`;
+    ${ajusteTempoHoje?`<div class="info ib time-adjust-confirm" style="margin-top:10px">Treino ajustado para ${ajusteTempoHoje.limite} min. A adaptação vale somente hoje.</div>`:`<div class="form-help" style="margin-top:8px">O treino completo segue o tempo habitual definido em Perfil & Plano.</div>`}`;
   el.appendChild(tempoCard);
   tempoCard.querySelectorAll('[data-tempo-hoje]').forEach(btn=>btn.addEventListener('click',()=>{
     const limite=+btn.dataset.tempoHoje||0;
@@ -10010,7 +10098,7 @@ function rHoje(){
   durCard.innerHTML=durTreino?`<div class="h3">Duração estimada</div>
     <div style="font-size:var(--type-heading);font-weight:var(--fw-strong);margin-bottom:4px">${faixaMinutos(durTreino.total)}</div>
     <div class="ms">Aquecimento: ${faixaMinutos(durTreino.aq)||'—'} · Principal: ${faixaMinutos(durTreino.principal)||'—'} · tempo aproximado</div>
-    ${dia.ajusteTempo?`<div class="info ib" style="margin-top:10px">${dia.tempoDiarioAplicado?`Sessão adaptada somente para hoje ao limite de ${dia.tempoDiarioLimite} min.`:(dia.tempoSemLimite?'Sessão completa planejada, sem limite rígido de duração.':`Treino ajustado ao limite de ${dia.tempoMaxAplicado} min.${dia.tempoAlvoMin&&dia.tempoAlvoMax?` Faixa planejada: ${dia.tempoAlvoMin}–${dia.tempoAlvoMax} min.`:''}`)}<br>Estimativa original: ${faixaMinutos(dia.duracaoOriginal)}.<br>Estimativa ajustada: ${faixaMinutos(dia.duracaoAjustada)}.${(dia.ajustesTempo||[]).length?`<br><strong>Ajustes:</strong> ${escHtml(dia.ajustesTempo.join(' · '))}.`:''}</div>`:''}
+    ${dia.ajusteTempo?`<details class="time-adjust-details"><summary>Ver detalhes do ajuste</summary><div class="info ib" style="margin-top:8px">Estimativa original: ${faixaMinutos(dia.duracaoOriginal)}.<br>Estimativa ajustada: ${faixaMinutos(dia.duracaoAjustada)}.${(dia.ajustesTempo||[]).length?`<br><strong>Ajustes:</strong> ${escHtml(dia.ajustesTempo.join(' · '))}.`:''}</div></details>`:''}
     ${dia.avisoTempo?`<div class="info io">${escHtml(dia.avisoTempo)}</div>`:''}`:
     `<div class="h3">Duração estimada</div><div class="ms">Duração estimada indisponível.</div>`;
   el.appendChild(durCard);
@@ -10048,7 +10136,7 @@ function rHoje(){
           ${dur?`<div class="ex-d"><strong>Tempo estimado:</strong> ${faixaMinutos(dur)} aprox.</div>`:''}
           <div class="fr">
             <button class="btn btn-s btn-sm" data-more-aq>Como fazer</button>
-            ${tempo?`<button class="btn btn-s btn-sm" data-timer-aq="${tempo}" data-timer-type="execucao" data-tn-aq="${escHtml(inf.amigavel)}"${atributosProximoTimerCalifit(descansoAq?{tipo:'descanso',segundos:descansoAq,nome:inf.amigavel}:null)}>${escHtml(rotuloTimerAq)}</button>`:''}
+            ${tempo?`<button class="btn btn-s btn-sm" data-timer-aq="${tempo}" data-timer-type="execucao" data-tn-aq="${escHtml(inf.amigavel)}" aria-label="Iniciar execução de ${escHtml(inf.amigavel)} por ${tempo} segundos"${atributosProximoTimerCalifit(descansoAq?{tipo:'descanso',segundos:descansoAq,nome:inf.amigavel}:null)}>Iniciar ${tempo}s</button>`:''}
           </div>
           <div class="ex-more">
             ${inf.objetivo?`<div class="ex-nt"><strong>Objetivo:</strong> ${escHtml(inf.objetivo)}</div>`:''}
@@ -10116,80 +10204,72 @@ function rHoje(){
   }
 
   // Obs + botões
-  const obsCard=document.createElement('div');obsCard.className='card';
+  const obsCard=document.createElement('div');obsCard.className='card feedback-min-shell';
   obsCard.innerHTML=`<div class="h3">Feedback mínimo</div>
-  <div class="ms">Escolha uma opção em cada item. Toque novamente na opção selecionada para desmarcar.</div>
+  <div class="ms feedback-min-intro">Três respostas rápidas para orientar a próxima semana.</div>
   <div class="feedback-min-card" id="ci-feedback-card">
-    <div class="ci-effort-section">
-      <label class="fl">Status geral do treino</label>
+    <div class="feedback-min-row">
+      <label class="fl">Treino</label>
       <select class="ci-native-select-hidden" id="ci-status-geral"><option value="">Inferir pelos exercícios</option><option value="sim"${ST.exec._ciStatusGeral==='sim'?' selected':''}>Fiz</option><option value="parcial"${ST.exec._ciStatusGeral==='parcial'?' selected':''}>Parcial</option><option value="nao"${ST.exec._ciStatusGeral==='nao'?' selected':''}>Não fiz</option></select>
       <div class="ci-chip-grid" data-ci-group="ci-status-geral">
-        <button class="ci-chip${ST.exec._ciStatusGeral==='sim'?' on':''}" type="button" data-ci-value="sim">Fiz</button>
+        <button class="ci-chip${ST.exec._ciStatusGeral==='sim'?' on':''}" type="button" data-ci-value="sim">Completo</button>
         <button class="ci-chip${ST.exec._ciStatusGeral==='parcial'?' on':''}" type="button" data-ci-value="parcial">Parcial</button>
-        <button class="ci-chip${ST.exec._ciStatusGeral==='nao'?' on':''}" type="button" data-ci-value="nao">Não fiz</button>
-      </div>
-      <div class="form-help">Parcial e Não fiz mantêm o registro, mas não geram progressão.</div>
-    </div>
-    <div class="r2">
-      <div>
-        <label class="fl">Dor</label>
-        <select class="ci-native-select-hidden" id="ci-dor"><option value="">Informar dor</option><option value="nao"${ST.exec._ciDor==='nao'?' selected':''}>Sem dor</option><option value="leve"${ST.exec._ciDor==='leve'?' selected':''}>Dor leve</option><option value="moderada_forte"${ST.exec._ciDor==='moderada_forte'?' selected':''}>Dor moderada/forte</option></select>
-        <div class="ci-chip-grid" data-ci-group="ci-dor">
-          <button class="ci-chip${ST.exec._ciDor==='nao'?' on':''}" type="button" data-ci-value="nao">Sem dor</button>
-          <button class="ci-chip${ST.exec._ciDor==='leve'?' on':''}" type="button" data-ci-value="leve">Leve</button>
-          <button class="ci-chip${ST.exec._ciDor==='moderada_forte'?' on':''}" type="button" data-ci-value="moderada_forte">Moderada/forte</button>
-        </div>
-        <div class="form-help">Dor relevante segura a progressão.</div>
-      </div>
-      <div>
-        <label class="fl">Dificuldade geral</label>
-        <select class="ci-native-select-hidden" id="ci-dif"><option value="">Informar dificuldade</option><option value="facil"${ST.exec._ciDif==='facil'?' selected':''}>Fácil</option><option value="adequado"${ST.exec._ciDif==='adequado'?' selected':''}>Na medida</option><option value="dificil"${ST.exec._ciDif==='dificil'?' selected':''}>Difícil</option></select>
-        <div class="ci-chip-grid" data-ci-group="ci-dif">
-          <button class="ci-chip${ST.exec._ciDif==='facil'?' on':''}" type="button" data-ci-value="facil">Fácil</button>
-          <button class="ci-chip${ST.exec._ciDif==='adequado'?' on':''}" type="button" data-ci-value="adequado">Na medida</button>
-          <button class="ci-chip${ST.exec._ciDif==='dificil'?' on':''}" type="button" data-ci-value="dificil">Difícil</button>
-        </div>
-        <div class="form-help">Influencia a próxima semana.</div>
+        <button class="ci-chip${ST.exec._ciStatusGeral==='nao'?' on':''}" type="button" data-ci-value="nao">Não consegui</button>
       </div>
     </div>
-    <div class="ci-effort-section">
-      <label class="fl">Esforço geral</label>
-      <select class="ci-native-select-hidden" id="ci-esf"><option value="">Informar esforço</option><option value="leve"${ST.exec._ciEsf==='leve'?' selected':''}>Leve</option><option value="moderado"${ST.exec._ciEsf==='moderado'?' selected':''}>Moderado</option><option value="pesado"${ST.exec._ciEsf==='pesado'||ST.exec._ciEsf==='alto'?' selected':''}>Pesado</option><option value="muito_pesado"${ST.exec._ciEsf==='muito_pesado'?' selected':''}>Muito pesado</option><option value="maximo"${ST.exec._ciEsf==='maximo'?' selected':''}>Máximo / falhei</option></select>
-    <div class="ci-chip-grid" data-ci-group="ci-esf">
-      <button class="ci-chip${ST.exec._ciEsf==='leve'?' on':''}" type="button" data-ci-value="leve">Leve</button>
-      <button class="ci-chip${ST.exec._ciEsf==='moderado'?' on':''}" type="button" data-ci-value="moderado">Moderado</button>
-      <button class="ci-chip${ST.exec._ciEsf==='pesado'||ST.exec._ciEsf==='alto'?' on':''}" type="button" data-ci-value="pesado">Pesado</button>
-      <button class="ci-chip${ST.exec._ciEsf==='muito_pesado'?' on':''}" type="button" data-ci-value="muito_pesado">Muito pesado</button>
-      <button class="ci-chip${ST.exec._ciEsf==='maximo'?' on':''}" type="button" data-ci-value="maximo">Máximo / falhei</button>
+    <div class="feedback-min-row">
+      <label class="fl">Dor</label>
+      <select class="ci-native-select-hidden" id="ci-dor"><option value="">Informar dor</option><option value="nao"${ST.exec._ciDor==='nao'?' selected':''}>Sem dor</option><option value="leve"${ST.exec._ciDor==='leve'?' selected':''}>Dor leve</option><option value="moderada_forte"${ST.exec._ciDor==='moderada_forte'?' selected':''}>Dor moderada/forte</option></select>
+      <div class="ci-chip-grid" data-ci-group="ci-dor">
+        <button class="ci-chip${ST.exec._ciDor==='nao'?' on':''}" type="button" data-ci-value="nao">Não</button>
+        <button class="ci-chip${ST.exec._ciDor==='leve'?' on':''}" type="button" data-ci-value="leve">Leve</button>
+        <button class="ci-chip${ST.exec._ciDor==='moderada_forte'?' on':''}" type="button" data-ci-value="moderada_forte">Relevante</button>
+      </div>
     </div>
+    <div class="feedback-min-row feedback-min-row-effort">
+      <label class="fl">Esforço</label>
+      <select class="ci-native-select-hidden" id="ci-dif"><option value="">Inferido pelo esforço</option><option value="facil"${ST.exec._ciDif==='facil'?' selected':''}>Fácil</option><option value="adequado"${ST.exec._ciDif==='adequado'?' selected':''}>Na medida</option><option value="dificil"${ST.exec._ciDif==='dificil'?' selected':''}>Difícil</option></select>
+      <select class="ci-native-select-hidden" id="ci-esf"><option value="">Informar esforço</option><option value="leve"${ST.exec._ciEsf==='leve'?' selected':''}>Leve</option><option value="moderado"${ST.exec._ciEsf==='moderado'?' selected':''}>Moderado</option><option value="pesado"${['pesado','alto','muito_pesado'].includes(ST.exec._ciEsf)?' selected':''}>Pesado</option><option value="maximo"${ST.exec._ciEsf==='maximo'?' selected':''}>Máximo / falhei</option></select>
+      <div class="ci-chip-grid" data-ci-group="ci-esf">
+        <button class="ci-chip${ST.exec._ciEsf==='leve'?' on':''}" type="button" data-ci-value="leve">Leve</button>
+        <button class="ci-chip${ST.exec._ciEsf==='moderado'?' on':''}" type="button" data-ci-value="moderado">Adequado</button>
+        <button class="ci-chip${['pesado','alto','muito_pesado'].includes(ST.exec._ciEsf)?' on':''}" type="button" data-ci-value="pesado">Difícil</button>
+        <button class="ci-chip${ST.exec._ciEsf==='maximo'?' on':''}" type="button" data-ci-value="maximo">Máximo / falhei</button>
+      </div>
     </div>
   </div>
-  <div class="h3">Observações</div><textarea class="fi" id="obs-tr" placeholder="Como você está hoje? Algo relevante...">${escHtml(ST.exec._obs||'')}</textarea>`;
+  <div class="feedback-min-note">Treino parcial, dor relevante ou esforço máximo impedem progressão automática.</div>
+  <details class="feedback-notes-disclosure"><summary>Adicionar observação</summary><textarea class="fi" id="obs-tr" placeholder="Algo relevante sobre o treino?">${escHtml(ST.exec._obs||'')}</textarea></details>`;
   el.appendChild(obsCard);
   $('obs-tr').addEventListener('input',e=>{ST.exec._obs=e.target.value;salvar();});
-  const bindCheckinChip=(id,key)=>{
+  const bindCheckinChip=(id,key,aposDefinir=null)=>{
     const sel=$(id);
     const wrap=document.querySelector(`[data-ci-group="${id}"]`);
     const set=v=>{
       if(sel) sel.value=v;
       ST.exec[key]=v;
       wrap?.querySelectorAll('[data-ci-value]').forEach(b=>{
-        const ativo=b.dataset.ciValue===v;
+        const ativo=b.dataset.ciValue===v||(id==='ci-esf'&&b.dataset.ciValue==='pesado'&&['alto','muito_pesado'].includes(v));
         b.classList.toggle('on',ativo);
         b.setAttribute('aria-pressed',String(ativo));
       });
+      if(typeof aposDefinir==='function') aposDefinir(v);
       salvar();
     };
     wrap?.querySelectorAll('[data-ci-value]').forEach(b=>b.addEventListener('click',()=>{
       const valor=b.dataset.ciValue;
-      set(ST.exec[key]===valor?'':valor);
+      const atual=id==='ci-esf'&&valor==='pesado'&&['alto','muito_pesado'].includes(ST.exec[key])?'pesado':ST.exec[key];
+      set(atual===valor?'':valor);
     }));
     sel?.addEventListener('change',e=>set(e.target.value));
   };
   bindCheckinChip('ci-status-geral','_ciStatusGeral');
   bindCheckinChip('ci-dor','_ciDor');
-  bindCheckinChip('ci-dif','_ciDif');
-  bindCheckinChip('ci-esf','_ciEsf');
+  bindCheckinChip('ci-esf','_ciEsf',valor=>{
+    const dificuldade=valor==='leve'?'facil':valor==='moderado'?'adequado':valor?'dificil':'';
+    ST.exec._ciDif=dificuldade;
+    if($('ci-dif')) $('ci-dif').value=dificuldade;
+  });
 
   const btnFin=document.createElement('button');btnFin.className='btn';btnFin.textContent='✅ Finalizar Treino';
   btnFin.addEventListener('click',finalizarTreino);el.appendChild(btnFin);
@@ -10271,10 +10351,11 @@ function resumoConclusaoTempoCalifit(registro={}){
   const t=registro?.treino||registro||{};
   const limite=+(t.tempoDisponivelHoje||registro?.tempoDisponivelHoje||0);
   const adaptado=!!(t.treinoAdaptadoPorTempo||registro?.treinoAdaptadoPorTempo||t.statusConclusao==='completo_adaptado'||registro?.statusConclusao==='completo_adaptado');
+  if(!adaptado||!limite) return '';
   const status=statusGeralCheckinCalifit(registro?.statusGeral||t.statusGeral,t.exercicios||[]);
-  if(status==='nao') return adaptado&&limite?`Sessão adaptada para ${limite} min e registrada como não realizada.`:'Treino registrado como não realizado.';
-  if(status==='parcial') return adaptado&&limite?`Sessão adaptada para ${limite} min e registrada como parcial.`:'Treino registrado como parcial.';
-  return adaptado&&limite?`Sessão adaptada para ${limite} min e concluída como treino completo.`:'';
+  if(status==='nao') return `Sessão adaptada para ${limite} min · não realizada.`;
+  if(status==='parcial') return `Sessão adaptada para ${limite} min · concluída parcialmente.`;
+  return `Sessão adaptada para ${limite} min · concluída.`;
 }
 function registroTreinoUnicoDiaCalifit(sem,diaIdx){
   const reg=sem?.registros?.[String(+diaIdx)]||sem?.registros?.[+diaIdx]||null;
@@ -10331,6 +10412,45 @@ function garantirMetadadosCheckinCalifit(registro,sem,diaIdx){
   return registro;
 }
 
+// 167G.5 — detecta conflitos entre o resumo geral e registros específicos.
+// O usuário pode manter a escolha, mas o treino fica sem progressão automática.
+function divergenciasFeedbackTreinoCalifit(exercicios=[],statusInformado='',checkinMinimo={}){
+  const logs=arr(exercicios).map(e=>e?.log||e||{});
+  const statusEx=logs.map(l=>l.feito).filter(v=>['sim','parcial','nao'].includes(v));
+  const nomesPorStatus=status=>arr(exercicios)
+    .filter(e=>(e?.log||e||{}).feito===status)
+    .map(e=>e?.nome||e?.n||'exercício');
+  const divergencias=[];
+  if(statusInformado==='sim'&&statusEx.some(v=>v==='parcial'||v==='nao')){
+    const alterados=[...nomesPorStatus('parcial'),...nomesPorStatus('nao')];
+    divergencias.push(`Treino marcado como completo, mas ${fraseListaHumana(alterados.slice(0,3))||'há exercício parcial ou não realizado'}.`);
+  }
+  if(statusInformado==='nao'&&statusEx.some(v=>v==='sim'||v==='parcial')){
+    divergencias.push('Treino marcado como não realizado, mas existem exercícios registrados como feitos ou parciais.');
+  }
+  if(statusInformado==='parcial'&&statusEx.length&&statusEx.every(v=>v==='sim')){
+    divergencias.push('Treino marcado como parcial, mas todos os exercícios registrados estão como feitos.');
+  }
+
+  const comDor=arr(exercicios).filter(e=>temDorLog(e?.log||e||{}));
+  if(checkinMinimo.dor==='nao'&&comDor.length){
+    divergencias.push(`Feedback geral sem dor, mas há dor registrada em ${fraseListaHumana(comDor.slice(0,3).map(e=>e?.nome||e?.n||'exercício'))}.`);
+  }
+
+  const pesados=arr(exercicios).filter(e=>{
+    const l=e?.log||e||{};
+    return rpeLog(l)>=9||feedbackPesadoAtual163K1(l)||tecnicaRuimLog(l);
+  });
+  if(['leve','moderado'].includes(checkinMinimo.esforco)&&pesados.length){
+    divergencias.push(`Esforço geral marcado como ${checkinMinimo.esforco==='leve'?'leve':'adequado'}, mas há esforço alto ou técnica ruim em ${fraseListaHumana(pesados.slice(0,3).map(e=>e?.nome||e?.n||'exercício'))}.`);
+  }
+  return [...new Set(divergencias)];
+}
+function htmlDivergenciasFeedbackTreinoCalifit(divergencias=[]){
+  return `<div class="info io"><strong>Encontramos informações divergentes:</strong><ul style="margin:8px 0 0 18px">${arr(divergencias).map(d=>`<li>${escHtml(d)}</li>`).join('')}</ul></div>
+  <div class="ms">Você pode voltar e corrigir ou salvar mantendo as escolhas. Ao manter, o treino será registrado sem progressão automática.</div>`;
+}
+
 function finalizarTreino(){finalizarTreinoDia(new Date().getDay());}
 function finalizarTreinoDia(diaIdx,opts={}){
   const alvo=+diaIdx;const hoje=new Date().getDay();const dia=ST.plano.dias[alvo];if(!dia) return;
@@ -10353,6 +10473,18 @@ function finalizarTreinoDia(diaIdx,opts={}){
   const checkinMinimo={dor:ST.exec._ciDor||'',dificuldade:ST.exec._ciDif||'',esforco:ST.exec._ciEsf||''};
   const draftCheckin={tipo:'feito',treino:{exercicios:exs,checkinMinimo},checkinMinimo};
   const feedbackCompleto=checkinMinimoCompleto(draftCheckin);
+  const divergenciasFeedback=divergenciasFeedbackTreinoCalifit(exs,ST.exec._ciStatusGeral||'',checkinMinimo);
+  if(divergenciasFeedback.length&&!opts.confirmarDivergencias){
+    mOpen('m2',`<div class="mt2">Revisar feedback</div>
+      ${htmlDivergenciasFeedbackTreinoCalifit(divergenciasFeedback)}
+      <div class="conf-btns" style="display:grid;grid-template-columns:1fr;gap:8px;margin-top:14px">
+        <button class="btn" id="ci-revisar-divergencias" style="margin:0">Voltar e revisar</button>
+        <button class="btn btn-s" id="ci-manter-divergencias" style="margin:0">Salvar mantendo as escolhas</button>
+      </div>`);
+    $('ci-revisar-divergencias')?.addEventListener('click',()=>{mClose('m2');($('ci-feedback-card')||$('ci-status-geral'))?.scrollIntoView({behavior:'smooth',block:'center'});});
+    $('ci-manter-divergencias')?.addEventListener('click',()=>{mClose('m2');finalizarTreinoDia(diaIdx,{...opts,confirmarDivergencias:true});});
+    return;
+  }
   if(!feedbackCompleto&&!opts.ignorarProgressao&&statusGeral==='sim'){
     mOpen('m2',`<div class="mt2">Feedback mínimo</div>
     <div class="ms">Para ajustar seu próximo treino com segurança, informe dor, dificuldade e esforço geral.</div>
@@ -10365,10 +10497,11 @@ function finalizarTreinoDia(diaIdx,opts={}){
     $('ci-salvar-sem-prog')?.addEventListener('click',()=>{mClose('m2');finalizarTreinoDia(diaIdx,{...opts,ignorarProgressao:true});});
     return;
   }
-  const semProgressao=!feedbackCompleto||opts.ignorarProgressao||statusGeral!=='sim';
+  const semProgressao=!feedbackCompleto||opts.ignorarProgressao||statusGeral!=='sim'||divergenciasFeedback.length>0;
   const registroSimples=!dadosDetalhados&&marcados.every(e=>{
     const l=ST.exec[e.n]||{};
-    return l.feito&&!l.rpe&&!l.dor&&!l.tecnica&&!l.observacoes&&!(Array.isArray(l.series)&&l.series.length);
+    const seriesExplicitas=Array.isArray(l.series)&&l.series.length&&!l.registroPorExcecao&&!l.dadosPresumidos;
+    return l.feito&&!l.rpe&&!l.dor&&!l.tecnica&&!l.observacoes&&!seriesExplicitas;
   });
   const recomendacoes=(registroSimples||semProgressao)?[]:ocorrencias.filter(o=>['sim','parcial','nao'].includes(ST.exec[o.ex.n]?.feito)).map(o=>{
     const e=o.ex;
@@ -10381,7 +10514,8 @@ function finalizarTreinoDia(diaIdx,opts={}){
   const dataPlanejada=dataDiaSemana(sem,alvo);
   const retroativo=opts.retroativo||alvo!==hoje;
   const notaRetroativa=retroativo?`Registrado em ${dataHoraCurtaBR(lancadoEm)} para o treino de ${dataCurtaBR(dataPlanejada)}.`:'';
-  const motivoProgressaoIgnorada=!feedbackCompleto||opts.ignorarProgressao?'checkin_minimo_incompleto':statusGeral!=='sim'?'status_geral_parcial_ou_nao':'';
+  const motivoProgressaoIgnorada=divergenciasFeedback.length?'feedback_divergente':
+    (!feedbackCompleto||opts.ignorarProgressao?'checkin_minimo_incompleto':statusGeral!=='sim'?'status_geral_parcial_ou_nao':'');
   const conclusaoTempo=metadadosConclusaoTempoCalifit(dia,alvo);
   if(statusGeral!=='sim'){
     conclusaoTempo.statusConclusao=statusGeral;
@@ -10393,9 +10527,9 @@ function finalizarTreinoDia(diaIdx,opts={}){
   const editadoEm=registroExistente?lancadoEm.toISOString():'';
   const metaEdicao=editadoEm?{editadoEm}:{};
   const aquecimentoConcluido=!!ST.exec._aqFeito;
-  const entry={data:lancadoEm.toISOString(),dataPlanejada:dataPlanejada.toISOString(),diaIdx:alvo,nome:dia.nome,tipo:dia.tipo,obs:ST.exec._obs||'',exercicios:exs,recomendacoes,resumo:resumoFinal,sugestoesProgressao:recomendacoes,registroSimples,dadosDetalhados,aquecimentoConcluido,retroativo,notaRetroativa,checkinId,criadoEm,statusGeral,...metaEdicao,checkinMinimo,checkinMinimoCompleto:feedbackCompleto&&!semProgressao,progressaoIgnorada:semProgressao,motivoProgressaoIgnorada,...conclusaoTempo};
+  const entry={data:lancadoEm.toISOString(),dataPlanejada:dataPlanejada.toISOString(),diaIdx:alvo,nome:dia.nome,tipo:dia.tipo,obs:ST.exec._obs||'',exercicios:exs,recomendacoes,resumo:resumoFinal,sugestoesProgressao:recomendacoes,registroSimples,dadosDetalhados,aquecimentoConcluido,retroativo,notaRetroativa,checkinId,criadoEm,statusGeral,...metaEdicao,checkinMinimo,checkinMinimoCompleto:feedbackCompleto&&!semProgressao,progressaoIgnorada:semProgressao,motivoProgressaoIgnorada,feedbackDivergente:divergenciasFeedback.length>0,divergenciasFeedback,...conclusaoTempo};
   if(sem){
-    salvarRegistroTreinoUnicoDiaCalifit(sem,alvo,{tipo:'feito',data:registroExistente?.data||lancadoEm.toISOString(),diaIdx:alvo,dataPlanejada:dataPlanejada.toISOString(),retroativo,notaRetroativa,treino:entry,resumo:resumoFinal,sugestoesProgressao:recomendacoes,checkinId,criadoEm,statusGeral,...metaEdicao,aquecimentoConcluido,checkinMinimo,checkinMinimoCompleto:feedbackCompleto&&!semProgressao,progressaoIgnorada:semProgressao,motivoProgressaoIgnorada,...conclusaoTempo});
+    salvarRegistroTreinoUnicoDiaCalifit(sem,alvo,{tipo:'feito',data:registroExistente?.data||lancadoEm.toISOString(),diaIdx:alvo,dataPlanejada:dataPlanejada.toISOString(),retroativo,notaRetroativa,treino:entry,resumo:resumoFinal,sugestoesProgressao:recomendacoes,checkinId,criadoEm,statusGeral,...metaEdicao,aquecimentoConcluido,checkinMinimo,checkinMinimoCompleto:feedbackCompleto&&!semProgressao,progressaoIgnorada:semProgressao,motivoProgressaoIgnorada,feedbackDivergente:divergenciasFeedback.length>0,divergenciasFeedback,...conclusaoTempo});
     recalcularPreviaPendenteCalifit(sem,'registro de treino atualizado');
   }
   // A alternativa fica registrada no histórico, mas não contamina o plano dos próximos dias/semanas.
@@ -10423,10 +10557,10 @@ function renderTreinoConcluido(el,reg,diaIdx){
   <div style="font-size:var(--type-control);font-weight:var(--fw-bold);margin-bottom:4px">${escHtml(t.nome||'Treino do dia')}</div>
   <div style="font-size:var(--type-small);color:var(--sub);margin-bottom:12px">${new Date(reg.data||t.data||Date.now()).toLocaleString('pt-BR')}</div>
   ${reg.notaRetroativa||t.notaRetroativa?`<div class="info ib" style="text-align:left">${escHtml(reg.notaRetroativa||t.notaRetroativa)}</div>`:''}
-  ${resumoConclusaoTempoCalifit(reg)?`<div class="info ib" style="text-align:left"><strong>Tempo do dia:</strong> ${escHtml(resumoConclusaoTempoCalifit(reg))}</div>`:''}
-  <div class="info ${treinoContaParaProgressao(reg)?'ig':'ib'}" style="text-align:left">${escHtml(statusProgressaoPorCheckin(reg))}</div>
+  ${resumoConclusaoTempoCalifit(reg)?`<div class="info ib" style="text-align:left"><strong>Ajuste de tempo:</strong> ${escHtml(resumoConclusaoTempoCalifit(reg))}</div>`:''}
+  <div class="info ${avaliacaoProgressaoRegistroCalifit(reg).classe}" style="text-align:left">${escHtml(resumoStatusRegistroTreinoCalifit(reg))}${cargasUsadas.length?`<br><strong>Cargas usadas:</strong> ${escHtml(cargasUsadas.join(' · '))}`:''}</div>
   ${htmlConfiancaFeedbackCalifit(reg)}
-  <div class="info ig" style="text-align:left">${escHtml(t.resumo||reg.resumo||`${(t.exercicios||[]).length} exercícios registrados`)}${cargasUsadas.length?`<br><strong>Cargas usadas:</strong> ${escHtml(cargasUsadas.join(' · '))}`:''}</div>`;
+  ${(reg.feedbackDivergente||t.feedbackDivergente)?`<div class="info io" style="text-align:left"><strong>Feedback divergente:</strong> o registro foi mantido sem progressão automática.${arr(reg.divergenciasFeedback||t.divergenciasFeedback).length?`<br>${arr(reg.divergenciasFeedback||t.divergenciasFeedback).map(v=>escHtml(v)).join('<br>')}`:''}</div>`:''}`;
   if(sugestoes.length){
     const box=document.createElement('div');box.style.textAlign='left';box.style.marginTop='14px';
     box.innerHTML=`<div class="h3">${tituloIcone('progressao','Sugestões para o próximo treino')}</div>`;
@@ -10437,9 +10571,18 @@ function renderTreinoConcluido(el,reg,diaIdx){
     });
     card.appendChild(box);
   } else {
-    const box=document.createElement('div');box.className='info ib';box.style.textAlign='left';box.style.marginTop='14px';
-    box.textContent=treinoContaParaProgressao(reg)?'Registro inicial ou sem histórico suficiente para aumento automático.':'Sem progressão automática: feedback mínimo incompleto.';
-    card.appendChild(box);
+    const feedbackDivergente=!!(reg.feedbackDivergente||t.feedbackDivergente);
+    const avaliacaoProgressao=avaliacaoProgressaoRegistroCalifit(reg);
+    const textoSemSugestao=avaliacaoProgressao.motivo==='disponivel'
+      ?'Registro inicial ou sem histórico suficiente para aumento automático.'
+      :statusGeral==='sim'&&!feedbackDivergente&&avaliacaoProgressao.motivo==='incompleto'
+        ?'Sem progressão automática: feedback mínimo incompleto.'
+        :'';
+    if(textoSemSugestao){
+      const box=document.createElement('div');box.className='info ib';box.style.textAlign='left';box.style.marginTop='14px';
+      box.textContent=textoSemSugestao;
+      card.appendChild(box);
+    }
   }
   const btns=document.createElement('div');btns.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px';
   btns.innerHTML=`<button class="btn btn-s btn-sm" id="btn-ver-resumo" style="margin:0">Ver resumo</button><button class="btn btn-s btn-sm" id="btn-editar-reg" style="margin:0">Reabrir/editar</button><button class="btn btn-s btn-sm" id="btn-desfazer-reg" style="grid-column:1/3;margin:0;color:var(--r)">Desfazer conclusão</button>`;
@@ -10454,8 +10597,8 @@ function verResumoTreinoDia(diaIdx){
   const t=reg.treino, sugestoes=t.sugestoesProgressao||t.recomendacoes||reg.sugestoesProgressao||[];
   let h=`<div class="mt2">Resumo — ${escHtml(t.nome||'Treino')}</div><div class="ms">${new Date(reg.data||t.data).toLocaleString('pt-BR')}</div>
   ${reg.notaRetroativa||t.notaRetroativa?`<div class="info ib">${escHtml(reg.notaRetroativa||t.notaRetroativa)}</div>`:''}
-  ${resumoConclusaoTempoCalifit(reg)?`<div class="info ib"><strong>Tempo do dia:</strong> ${escHtml(resumoConclusaoTempoCalifit(reg))}</div>`:''}
-  <div class="info ${treinoContaParaProgressao(reg)?'ig':'ib'}">${escHtml(statusProgressaoPorCheckin(reg))}</div>
+  ${resumoConclusaoTempoCalifit(reg)?`<div class="info ib"><strong>Ajuste de tempo:</strong> ${escHtml(resumoConclusaoTempoCalifit(reg))}</div>`:''}
+  <div class="info ${avaliacaoProgressaoRegistroCalifit(reg).classe}">${escHtml(statusProgressaoPorCheckin(reg))}</div>
   ${htmlConfiancaFeedbackCalifit(reg)}
   <div class="info ig">${escHtml(t.resumo||reg.resumo||`${(t.exercicios||[]).length} exercícios registrados`)}</div>`;
   (t.exercicios||[]).forEach(e=>{
@@ -10485,7 +10628,7 @@ function editarRegistroTreinoDia(diaIdx){
   const optsDifGeral=[['','não informada'],['facil','Fácil'],['adequado','Na medida'],['dificil','Difícil']].map(([v,l])=>`<option value="${v}"${feedbackAtual.dificuldade===v?' selected':''}>${l}</option>`).join('');
   const optsEsfGeral=[['','não informado'],['leve','Leve'],['moderado','Moderado'],['pesado','Pesado'],['muito_pesado','Muito pesado'],['maximo','Máximo / falhei']].map(([v,l])=>`<option value="${v}"${feedbackAtual.esforco===v||feedbackAtual.esforco==='alto'&&v==='pesado'?' selected':''}>${l}</option>`).join('');
   let h=`<div class="mt2">Editar registro completo</div><div class="ms">Ajuste status, séries, repetições, dificuldade, dor, técnica e comentários sem criar outro check-in.</div>
-  ${resumoConclusaoTempoCalifit(reg)?`<div class="info ib"><strong>Tempo do dia:</strong> ${escHtml(resumoConclusaoTempoCalifit(reg))}</div>`:''}
+  ${resumoConclusaoTempoCalifit(reg)?`<div class="info ib"><strong>Ajuste de tempo:</strong> ${escHtml(resumoConclusaoTempoCalifit(reg))}</div>`:''}
   <div class="card" style="padding:12px;margin:10px 0"><div class="h3">Status geral do treino</div>
     <label class="fl" for="er-status-geral">Resultado do dia</label><select class="fi" id="er-status-geral" data-er-status-geral><option value="sim"${statusGeralAtual==='sim'?' selected':''}>Fiz</option><option value="parcial"${statusGeralAtual==='parcial'?' selected':''}>Parcial</option><option value="nao"${statusGeralAtual==='nao'?' selected':''}>Não fiz</option></select>
     <div class="form-help">Parcial e Não fiz mantêm o check-in, mas não geram progressão.</div>
@@ -11072,43 +11215,6 @@ function coletarHistoricoAtividades(){
     return{semanaId:sem.id,semanaNum:sem.num,diaIdx:+diaIdx,registro:reg,data,atividades:atividadesRegistradasDia(reg)};
   }).filter(Boolean)).sort((a,b)=>new Date(b.data)-new Date(a.data));
 }
-function renderHistoricoTreinos(el){
-  const hist=coletarHistoricoTreinos();
-  const histAtiv=coletarHistoricoAtividades();
-  const card=document.createElement('div');card.className='card';
-  card.innerHTML=`<div class="h3">${tituloIcone('historico','Histórico de treinos')}</div>`;
-  if(!hist.length&&!histAtiv.length){
-    card.innerHTML+='<div class="empty" style="padding:18px 0"><div class="empty-t">Nenhum treino ou atividade registrado ainda.</div><div class="empty-s">Finalize um treino ou registre uma atividade complementar para aparecer aqui.</div></div>';
-    el.appendChild(card);return;
-  }
-  hist.forEach((item,i)=>{
-    const t=item.treino, data=new Date(item.data);
-    const exs=t.exercicios||[];
-    const sugestoes=sugestoesProgressaoReais(t.sugestoesProgressao||t.recomendacoes||item.registro.sugestoesProgressao||[]);
-    const resumo=t.resumo||item.registro.resumo||`${exs.length} exercícios registrados`;
-    const exTxt=`${exs.length} exercício${exs.length===1?'':'s'}`;
-    const sugTxt=!treinoContaParaProgressao(item.registro)?'Sem progressão · Feedback incompleto':(sugestoes.length?(sugestoes.length===1?'1 sugestão de progressão':`${sugestoes.length} sugestões de progressão`):'Registro inicial · sem histórico suficiente para progressão');
-    const confTxt=`Confiança do feedback: ${avaliarConfiancaFeedbackCalifit(item.registro).nivel}`;
-    const row=document.createElement('div');row.className='hr';row.style.cursor='pointer';
-    row.dataset.histTreino=i;
-    row.innerHTML=`<div style="flex:1">
-      <div style="font-size:var(--type-body);font-weight:800">${escHtml(t.nome||'Treino')}</div>
-      <div style="font-size:var(--type-small);color:var(--sub);line-height:1.5">${data.toLocaleDateString('pt-BR')} · ${DPT[item.diaIdx]||data.toLocaleDateString('pt-BR',{weekday:'short'})} · Semana ${item.semanaNum||'—'} · concluído</div>
-      <div style="font-size:var(--type-small);color:var(--sub);line-height:1.5">${exTxt} · ${escHtml(resumo)}</div>
-      <div style="font-size:var(--type-small);color:var(--sub);line-height:1.5">${escHtml(sugTxt)} · ${escHtml(confTxt)}</div>
-    </div><span style="font-size:var(--type-heading);color:var(--sub)">›</span>`;
-    row.addEventListener('click',()=>abrirTreinoHistorico(i));
-    card.appendChild(row);
-  });
-  histAtiv.forEach((item,i)=>{
-    const detalhes=item.atividades.map(a=>`${nomeAtividadeComplementar(a)} · ${labelStatusAtividade(a.status||a.statusAtividade)}${a.duracaoMin?` · ${+a.duracaoMin} min`:''}${labelIntensidadeComplementar(a.intensidade)?` · ${labelIntensidadeComplementar(a.intensidade)}`:''}${a.obs?` · ${a.obs}`:''}`).join('<br>');
-    const row=document.createElement('div');row.className='hr';row.style.cursor='pointer';row.dataset.histAtividade=i;
-    row.innerHTML=`<div style="flex:1"><div style="font-size:var(--type-body);font-weight:800">Atividade complementar</div><div style="font-size:var(--type-small);color:var(--sub);line-height:1.5">${new Date(item.data).toLocaleDateString('pt-BR')} · ${DPT[item.diaIdx]||''} · Semana ${item.semanaNum||'—'}</div><div style="font-size:var(--type-small);color:var(--sub);line-height:1.5">${detalhes}</div></div>`;
-    row.addEventListener('click',()=>abrirAtividadeHistorico(i));
-    card.appendChild(row);
-  });
-  el.appendChild(card);
-}
 function abrirAtividadeHistorico(idx){
   const item=coletarHistoricoAtividades()[idx];if(!item)return;
   const sem=(ST.semanas||[]).find(s=>String(s.id)===String(item.semanaId));
@@ -11126,7 +11232,7 @@ function abrirTreinoHistorico(idx){
   const campo=(rotulo,valor)=>valor?`<span><strong>${rotulo}:</strong> ${escHtml(valor)}</span>`:'';
   let h=`<div class="mt2">${escHtml(t.nome||'Treino')}</div>
   <div class="ms">${data.toLocaleString('pt-BR')} · ${DPT[item.diaIdx]||''} · status: concluído</div>
-  <div class="info ${treinoContaParaProgressao(item.registro)?'ig':'ib'}">${escHtml(statusProgressaoPorCheckin(item.registro))}</div>
+  <div class="info ${avaliacaoProgressaoRegistroCalifit(item.registro).classe}">${escHtml(statusProgressaoPorCheckin(item.registro))}</div>
   ${htmlConfiancaFeedbackCalifit(item.registro)}
   <div class="info ig">${escHtml(t.resumo||item.registro.resumo||`${exs.length} exercícios registrados`)}</div>`;
   if(exs.length){
@@ -12273,20 +12379,36 @@ function renderPreviaProximaSemana(el){
   const card=document.createElement('div');card.className='card';
   const dias=Object.entries(prev.plano?.dias||{}).map(([d,dia])=>`<div class="hr"><div><strong>${DPT_FULL[+d]}</strong><div style="font-size:var(--type-small);color:var(--sub)">${escHtml(dia.nome||dia.atividade||tipoLabel(dia.tipo)||'—')}</div></div><span style="font-size:var(--type-micro);padding:2px 8px;border-radius:var(--rad-md);background:var(--bg);color:var(--sub);font-weight:700">${escHtml(tipoLabel(dia.tipo))}</span></div>`).join('');
   const decisao=prev.decisaoPrevia||{};
-  const motivosDecisao=arr(decisao.motivos).slice(0,4);
-  const explicacaoDecisao=decisao.ajuste?`<div class="h3" style="margin-top:8px">Por que a prévia ficou assim</div>
-    <div class="info ib">
-      <strong>Confiança do feedback:</strong> ${escHtml(qualidadeLabel(decisao.confianca||'baixa'))}.<br>
-      <strong>Ajuste:</strong> ${escHtml(decisao.ajuste)}.<br>
-      ${decisao.confiancaTexto?`<span>${escHtml(decisao.confiancaTexto)}</span><br>`:''}
-      ${motivosDecisao.length?`<strong>Motivo:</strong><br>${motivosDecisao.map(m=>`- ${escHtml(m)}`).join('<br>')}`:''}
-      ${decisao.aviso?`<br><strong>Aviso:</strong> ${escHtml(decisao.aviso)}`:''}
+  const motivosDecisao=[...new Set(arr(decisao.motivos).filter(Boolean))];
+  const statusDecisao=decisao.ajuste||'Plano mantido';
+  const motivoNorm=normTxt(motivosDecisao.join(' '));
+  const explicacaoPrincipal=/sem treinos concluidos|ausencia de treinos concluidos/.test(motivoNorm)
+    ?'Não houve treinos concluídos suficientes para avaliar desempenho.'
+    :/feedback incompleto|sem feedback minimo/.test(motivoNorm)
+      ?'Os registros não têm feedback suficiente para orientar progressão.'
+      :/parcial|nao fiz|nao realizada/.test(motivoNorm)
+        ?'Houve execução parcial ou não realizada; a progressão automática ficou suspensa.'
+        :/dor/.test(motivoNorm)
+          ?'Os registros de dor pedem uma semana mais conservadora.'
+          :(motivosDecisao[0]||decisao.confiancaTexto||'O plano foi mantido de forma conservadora.');
+  const motivosExtras=motivosDecisao.filter(m=>{
+    const n=normTxt(m);
+    if(!n||n===normTxt(explicacaoPrincipal)) return false;
+    if(/sem treinos concluidos|ausencia de treinos concluidos/.test(motivoNorm)&&/sem treinos concluidos|ausencia de treinos concluidos/.test(n)) return false;
+    if(/feedback incompleto|sem feedback minimo/.test(motivoNorm)&&/feedback incompleto|sem feedback minimo/.test(n)) return false;
+    if(/parcial|nao fiz|nao realizada/.test(motivoNorm)&&/parcial|nao fiz|nao realizada/.test(n)) return false;
+    if(/dor/.test(motivoNorm)&&/dor/.test(n)) return false;
+    return true;
+  }).slice(0,3);
+  const avisoRelevante=/progressão leve|reduzido|bloqueado/i.test(statusDecisao)&&decisao.aviso?decisao.aviso:'';
+  const explicacaoDecisao=decisao.ajuste?`<div class="week-preview-decision">
+      <strong>${escHtml(statusDecisao)}</strong>
+      <span>${escHtml(explicacaoPrincipal)}</span>
+      <small>Confiança ${escHtml(qualidadeLabel(decisao.confianca||'baixa').toLowerCase())}${decisao.confianca==='baixa'?' — dados insuficientes':''}</small>
+      ${motivosExtras.length?`<details><summary>Outros fatores</summary><div>${motivosExtras.map(m=>`• ${escHtml(m)}`).join('<br>')}</div></details>`:''}
+      ${avisoRelevante?`<em>${escHtml(avisoRelevante)}</em>`:''}
     </div>`:'';
   const gruposAlteracoes=agruparAlteracoesPrevia(prev.alteracoesAplicadas||prev.alteracoes||[]);
-  const genericas=gruposAlteracoes.filter(alteracaoGenericaCautelaGrupo);
-  const resumoItens=[...(prev.resumoAjustes||[])];
-  if(genericas.length&&!resumoItens.some(t=>/cautela|progress/i.test(t))) resumoItens.push('Cautela geral: progressões agressivas ficam suspensas para exercícios sensíveis nesta semana.');
-  const resumo=resumoItens.map(t=>`<div class="hr"><span>${escHtml(t)}</span></div>`).join('');
   const alts=gruposAlteracoes.filter(a=>!alteracaoGenericaCautelaGrupo(a)).map(a=>{
     const motivos=(a.motivos||[]).length?a.motivos:['Ajuste da prévia semanal.'];
     const ajustes=resumirAjustesAlteracao(a).length?resumirAjustesAlteracao(a):['Manter a prescrição atual e registrar dor, dificuldade e técnica antes de progredir.'];
@@ -12299,8 +12421,7 @@ function renderPreviaProximaSemana(el){
   card.innerHTML=`<div class="h3">Prévia da próxima semana</div>
   <div style="font-size:var(--type-label);color:var(--sub);margin-bottom:10px">${prev.geradaAutomaticamente?'Prévia gerada automaticamente após o fim da semana.':'Prévia gerada.'} Revise as alterações antes de aplicar. A semana atual só será fechada definitivamente quando você confirmar.</div>
   ${explicacaoDecisao}
-  ${resumo?`<div class="h3" style="margin-top:8px">Resumo dos ajustes</div>${resumo}`:''}
-  <div class="h3" style="margin-top:8px">Dias</div>${dias}
+  <div class="h3" style="margin-top:12px">Dias</div>${dias}
   <div class="h3" style="margin-top:12px">Alterações propostas</div>${alts}
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
     <button class="btn" id="btn-aplicar-previa" style="margin:0">Aplicar próxima semana</button>
@@ -12752,286 +12873,6 @@ function renderEvolucao(el){
   el.appendChild(card);
 }
 
-function rCorpo(){
-  const el=$('s2');
-  el.innerHTML='';
-  const p=ST.perfil;
-  ST.bio=(ST.bio||[]).slice().sort((a,b)=>new Date(b?.data||0)-new Date(a?.data||0));
-  const b=ST.bio[0], b1=ST.bio[1];
-  const bioEditData=ST.exec?._bioEditData||'';
-  const bioEdit=ST.bio.find(x=>x?.data===bioEditData)||null;
-  const bioDataHora=dataHoraLocalInput(bioEdit?.data);
-  const pi=piIdeal(p.altura,p.genero);
-  const diasSemBio=b?Math.floor((Date.now()-new Date(b.data).getTime())/(1000*60*60*24)):null;
-  const historicoMetas=arr(ST.corpo?.historicoMetas);
-
-  function append(html){ el.insertAdjacentHTML('beforeend', html); }
-  function gv(id){
-    const elv=$(id);
-    if(!elv) return null;
-    const v=numeroDecimalEstrito(elv.value);
-    return Number.isFinite(v)?v:null;
-  }
-
-  // Resumo corporal atual
-  const ultimoPeso=registroPesoMaisRecente();
-  const leituraAtual=b?leituraBioSeparada(p,b):null;
-  append(`<div class="bc" style="background:#111;color:#fff;border-color:#111;text-align:left">
-    <div class="bc-l" style="color:#bdbdbd">Peso mais recente</div>
-    <div class="bc-v" style="color:#fff">${validarPesoKg(p.peso).valido?`${p.peso} kg`:'Não informado'}</div>
-    <div class="bc-l" style="color:#cfcfcf">${ultimoPeso?`${escHtml(rotuloOrigemCorporal(ultimoPeso.origem)||ultimoPeso.origem)}${ultimoPeso.data?' · '+new Date(ultimoPeso.data).toLocaleDateString('pt-BR'):''}`:'Registre peso diário ou bioimpedância com peso.'}</div>
-  </div>`);
-  append(`<div class="card">
-    <div class="h3">Resumo corporal</div>
-    ${leituraAtual?`<div class="info igr">Composição corporal: ${escHtml(leituraAtual.composicao)}<br><span style="font-size:12px">Base: última bioimpedância registrada.</span></div>`:'<div class="info ib">Ainda sem leitura de bioimpedância. Registre uma medição quando tiver dados de balança ou aparelho.</div>'}
-    <div class="form-grid body-form">
-      <div><label class="fl">Altura (cm)</label><input type="number" class="fi" id="p-altura" value="${p.altura||''}" placeholder="—"></div>
-    </div>
-    <div class="ms">O peso atual é derivado do último peso diário ou da última bioimpedância com peso. Para corrigir, registre um novo peso diário.</div>
-    ${!validarPesoKg(p.peso).valido&&p.peso?'<div class="info io">O peso salvo está fora da faixa esperada. Corrija-o antes de novos cálculos.</div>':''}
-    ${!validarAlturaCm(p.altura).valido&&p.altura?'<div class="info io">A altura salva está fora da faixa esperada. Informe em centímetros, por exemplo 165.</div>':''}
-    <div id="pi-info"></div>
-  </div>`);
-
-  // Peso diário separado da bioimpedância
-  append(`<div class="card">
-    <div class="h3">Peso diário</div>
-    <div class="form-grid body-form"><div class="form-field"><label class="form-label">Peso de hoje (kg)</label><input type="number" step="0.1" class="fi form-control" id="pd-peso" value="${validarPesoKg(p.peso).valido?p.peso:''}" placeholder="Ex: 72,5"><div class="form-help">Faixa aceita: 25 a 250 kg.</div></div></div>
-    <button class="btn" id="btn-reg-peso">Registrar peso</button>
-    ${ultimoPeso?`<div class="info igr" style="margin-bottom:0">Último registro de peso: <strong>${ultimoPeso.peso} kg</strong> · origem: ${escHtml(ultimoPeso.origem)}${ultimoPeso.data?' · '+new Date(ultimoPeso.data).toLocaleDateString('pt-BR'):''}</div>`:''}
-    <div class="ms">Este é o acompanhamento principal para o dia a dia. Bioimpedância fica como leitura avançada quando você tiver medição de balança ou aparelho.</div>
-  </div>`);
-
-  append(`<div class="card">
-    <div class="h3">Metas e tendência</div>
-    <div class="form-grid align-controls">
-      <div class="form-field"><label class="form-label">Meta de peso (kg)</label><input type="number" min="0" step="0.1" class="fi form-control" id="meta-peso" value="${p.metaPeso||''}" placeholder="Opcional"><div class="form-help"></div></div>
-      <div class="form-field"><label class="form-label">Meta de gordura corporal (%)</label><input type="number" min="0" step="0.1" class="fi form-control" id="meta-gordura" value="${p.metaGordura||''}" placeholder="Opcional"><div class="form-help"></div></div>
-    </div>
-    <button class="btn btn-s" id="btn-salvar-metas">Salvar metas</button>
-    <div class="info ib" style="margin-bottom:8px"><strong>Meta atual:</strong> ${p.metaPeso?`${p.metaPeso} kg`:'peso não definido'} · ${p.metaGordura?`${p.metaGordura}% de gordura`:'gordura não definida'}${historicoMetas[0]?.data?`<br><strong>Última alteração da meta:</strong> ${dataHoraBR(historicoMetas[0].data)}`:''}</div>
-    ${historicoMetas.length?`<details><summary class="fl" style="cursor:pointer">Últimas alterações</summary>${historicoMetas.slice(0,3).map(x=>`<div class="hr"><span>${dataHoraBR(x.data)}</span><strong>${x.metaPeso?`${x.metaPeso} kg`:'sem meta de peso'} · ${x.metaGordura?`${x.metaGordura}%`:'sem meta de gordura'}</strong></div>`).join('')}</details>`:''}
-    ${(p.metaPeso||p.metaGordura)?`<div class="info ib" style="margin-bottom:0">
-      ${p.peso&&p.metaPeso?`Peso atual: ${p.peso}kg · Meta: ${p.metaPeso}kg · Diferença: ${Math.abs(p.peso-p.metaPeso).toFixed(1)}kg<br>`:''}
-      ${b?.gordura&&p.metaGordura?`Gordura atual: ${b.gordura}% · Meta: ${p.metaGordura}% · Diferença: ${Math.abs(b.gordura-p.metaGordura).toFixed(1)} pontos percentuais`:''}
-    </div>`:''}
-  </div>`);
-
-  renderEvolucao(el);
-
-  if(diasSemBio==null){
-    append(`<div class="info ib">Nenhuma bioimpedância registrada ainda. Use esta seção apenas quando tiver uma medição de balança ou aparelho.</div>`);
-  } else if(diasSemBio>7){
-    append(`<div class="info io">${iconeCalifitInline('alert')} Bioimpedância há <strong>${diasSemBio} dias</strong> sem atualização.</div>`);
-  }
-
-  // Bio form
-  const bioFormHtml=`<div class="card">
-    <div class="h3">${bioEdit?'Editar bioimpedância':'Bioimpedância — avançado'}</div>
-    <div class="ms">Use quando tiver uma medição de balança ou aparelho. Para acompanhamento simples, registre apenas o peso diário.</div>
-    <div class="info ib">Bioimpedância pode variar diariamente. Compare tendências em condições semelhantes, preferencialmente em intervalos semanais.</div>
-    <div class="form-grid body-form">
-      <div><label class="fl">Data da medição</label><input type="date" class="fi" id="b-data" value="${bioDataHora.data}"></div>
-      <div><label class="fl">Horário da medição</label><input type="time" class="fi" id="b-hora" value="${bioDataHora.hora}"></div>
-    </div>
-    <div class="form-grid body-form">
-      <div><label class="fl">Peso (kg)</label><input type="number" step="0.1" class="fi" id="b-p" value="${bioEdit?.peso||''}" placeholder="—"></div>
-      <div><label class="fl">% Gordura</label><input type="number" step="0.1" class="fi" id="b-g" value="${bioEdit?.gordura||''}" placeholder="—"></div>
-    </div>
-    <div class="form-grid body-form">
-      <div class="form-field"><label class="form-label">Massa muscular esquelética (kg)</label><input type="number" step="0.1" class="fi form-control" id="b-m" value="${bioEdit?.massaMuscular||''}" placeholder="—"><div class="form-help">Estimativa dos músculos ligados ao movimento. Use como tendência, não diagnóstico.</div></div>
-      <div class="form-field"><label class="form-label">Água corporal (%)</label><input type="number" step="0.1" class="fi form-control" id="b-a" value="${bioEdit?.aguaCorp||''}" placeholder="—"><div class="form-help"></div></div>
-    </div>
-    <div class="form-grid body-form">
-      <div><label class="fl">Gordura Visceral</label><input type="number" class="fi" id="b-gv" value="${bioEdit?.gordVisceral||''}" placeholder="—"></div>
-      <div><label class="fl">TMB (kcal)</label><input type="number" class="fi" id="b-t" value="${bioEdit?.tmb||''}" placeholder="—"></div>
-    </div>
-    <div class="body-actions"><button class="btn" id="btn-reg-bio">${bioEdit?'Salvar alterações':'Registrar bioimpedância'}</button>
-    ${bioEdit?'<button class="btn btn-s" id="btn-cancelar-bio">Cancelar edição</button>':''}</div>
-  </div>`;
-
-  if(b){
-    const invalidosBio=[
-      ['peso',validarPesoKg(b.peso,{opcional:true})],
-      ['gordura corporal',validarGorduraCorporal(b.gordura)],
-      ['massa muscular esquelética',validarMassaMuscular(b.massaMuscular)],
-      ['água corporal',validarAguaCorporal(b.aguaCorp)],
-      ['gordura visceral',validarGorduraVisceral(b.gordVisceral)],
-      ['TMB',validarTmb(b.tmb)]
-    ].filter(([,r])=>!r.valido).map(([nome])=>nome);
-    if(invalidosBio.length) append(`<div class="info io">Esta medição antiga contém valores fora da faixa esperada em ${escHtml(fraseListaHumana(invalidosBio))}. Os valores foram preservados, mas não entram nos cálculos até serem corrigidos.</div>`);
-    const gorduraAtual=validarGorduraCorporal(b.gordura);
-    const temGordura=gorduraAtual.valido&&gorduraAtual.valor!=null;
-    const cls=temGordura?clsG(b.gordura||0,p.genero||'M',p.idade):{l:'Não informado',c:'var(--sub)'};
-    const alturaAtual=validarAlturaCm(p.altura);
-    const pesoAtual=validarPesoKg(b.peso);
-    const imc=alturaAtual.valido&&pesoAtual.valido?(pesoAtual.valor/((alturaAtual.valor/100)**2)).toFixed(1):null;
-    const imcStatus=imc?statusImc(imc):null;
-    const leitura=leituraBioSeparada(p,b);
-    const ml=leitura.massaMagra?leitura.massaMagra.toFixed(1):null;
-    const topoStatus={l:leitura.composicao,c:leitura.composicaoCor||'var(--sub)',sub:'Leitura baseada nos dados registrados de peso, gordura corporal e massa muscular'};
-    const pontuacao=pontuacaoCorporal(b,p);
-    append(`<div class="bc" style="background:${topoStatus.c}22;border-color:${topoStatus.c}44"><div class="bc-v" style="color:${topoStatus.c}">${topoStatus.l}</div><div class="bc-l" style="color:${topoStatus.c}">${topoStatus.sub} · Bioimpedância como tendência — ${dataHoraBR(b.data)}</div></div>`);
-    append(`<div class="card"><div class="h3">Composição corporal</div>
-      <div class="ir2"><span>Pontuação corporal</span><span style="font-weight:var(--fw-bold);text-align:right">${pontuacao||'—'}${pontuacao?'/100':''}<br><small style="color:var(--sub)">Base: combinação de gordura, hidratação, visceral e massa muscular informadas</small></span></div>
-      <div class="ir2"><span>Peso/IMC</span><span style="font-weight:var(--fw-bold);text-align:right">${leitura.pesoStatus.l}<br><small style="color:var(--sub)">Base: IMC adulto OMS/CDC${imc?` · IMC ${imc}`:''}</small></span></div>
-      <div class="ir2"><span>Gordura corporal</span><span style="font-weight:var(--fw-bold);text-align:right">${temGordura?cls.l:'Valor não informado'}<br><small style="color:var(--sub)">Base: referência geral por sexo</small></span></div>
-      <div class="ir2"><span>Massa magra calculada</span><span style="font-weight:var(--fw-bold);text-align:right">${ml?`${ml}kg`:'Não informado'}<br><small style="color:var(--sub)">Base: peso e % gordura</small></span></div>
-      <div class="ir2"><span>Massa muscular esquelética/tipo corporal</span><span style="font-weight:var(--fw-bold);text-align:right">${escHtml(tipoCorporalEstimado(b,p))}<br><small style="color:var(--sub)">Base: massa muscular relativa ao peso, sexo e idade</small></span></div>
-      <div class="ir2"><span>Sugestão de peso</span><span style="font-weight:var(--fw-bold);text-align:right;line-height:1.55">${sugestaoPesoReferencia(p,b).split('\n').map(escHtml).join('<br>')}</span></div>
-      <div class="ms">A bioimpedância deve ser acompanhada como tendência. Os resultados podem variar conforme hidratação, horário, alimentação, treino recente e aparelho utilizado.</div>
-    </div>`);
-    append(`<div class="sr">
-      <div class="sbox"><div class="sv">${b.peso||'—'}${b.peso?'kg':''}${trendT(b,b1,'peso',true)}</div><div class="sl">Peso</div></div>
-      <div class="sbox"><div class="sv" style="color:${cls.c}">${b.gordura||'—'}${b.gordura?'%':''}${b.gordura?trendT(b,b1,'gordura',true):''}</div><div class="sl">Gordura</div></div>
-      <div class="sbox"><div class="sv">${ml||'—'}${ml?'kg':''}</div><div class="sl">Massa Magra</div></div>
-    </div>
-    <div class="sr">
-      <div class="sbox"><div class="sv">${b.massaMuscular||'—'}${b.massaMuscular?'kg':''}${b.massaMuscular?trendT(b,b1,'massaMuscular',false):''}</div><div class="sl">Massa muscular esquelética</div></div>
-      <div class="sbox"><div class="sv">${b.aguaCorp||'—'}${b.aguaCorp?'%':''}${b.aguaCorp?trendT(b,b1,'aguaCorp',false):''}</div><div class="sl">Água</div></div>
-      <div class="sbox"><div class="sv">${b.tmb||'—'}</div><div class="sl">TMB kcal</div></div>
-    </div>`);
-    let indH=`<div class="card"><div class="h3">Métricas</div>`;
-    if(imc){const si=statusImc(imc);indH+=`<div class="ir2"><span>${iconeCalifitInline('chart')} IMC</span><span style="font-weight:var(--fw-bold);text-align:right">${imc} <span style="font-size:var(--type-caption);color:${si.c}">${si.l}</span><br><small style="color:var(--sub)">Base: IMC adulto OMS/CDC</small></span></div>`;}
-    if(pi) indH+=`<div class="ir2"><span>${iconeCalifitInline('balance')} Peso de referência</span><span style="font-weight:var(--fw-bold);text-align:right">${pi.min}–${pi.max}kg<br><small style="color:var(--sub)">Base: faixa de referência por IMC adulto</small></span></div>`;
-    if(b.gordVisceral) indH+=`<div class="ir2"><span>${iconeCalifitInline('heartPulse')} Gordura visceral</span><span style="font-weight:var(--fw-bold);text-align:right">${+b.gordVisceral<=9?'Dentro da faixa de referência':+b.gordVisceral<=14?'Atenção':'Acima da faixa de referência'}<br><small style="color:var(--sub)">Base: escala do aparelho; tendência</small></span></div>`;
-    if(b.aguaCorp) indH+=`<div class="ir2"><span>${iconeCalifitInline('drop')} Hidratação</span><span style="font-weight:var(--fw-bold);text-align:right;color:${leitura.aguaStatus.c}">${leitura.aguaStatus.l}<br><small style="color:var(--sub)">Base: referência geral por sexo; varia com hidratação, horário e aparelho</small></span></div>`;
-    if(p.metaGordura&&b.gordura) indH+=`<div class="ir2"><span>${iconeCalifitInline('target')} Meta gordura</span><span style="font-weight:700">${p.metaGordura}% <span style="font-size:var(--type-caption);color:var(--sub)">(${Math.abs(b.gordura-p.metaGordura).toFixed(1)}pp)</span></span></div>`;
-    indH+=`</div>`;
-    append(indH);
-    const biosComparaveis=(ST.bio||[]).filter(x=>x&&(validarPesoKg(x.peso).valido||(validarGorduraCorporal(x.gordura).valido&&validarGorduraCorporal(x.gordura).valor!=null)||(validarMassaMuscular(x.massaMuscular).valido&&validarMassaMuscular(x.massaMuscular).valor!=null)));
-    if(biosComparaveis.length<2){
-      append(`<div class="card"><div class="h3">Evolução da bioimpedância</div><div class="info ib">Ainda não há medições suficientes para tendência.</div></div>`);
-    } else {
-      const ini=biosComparaveis[biosComparaveis.length-1];
-      const linhas=[];
-      function linhaEvo(label,campo,sufixo,melhorMenor){
-        const atual=valorCorporalValido(campo,b[campo]),inicial=valorCorporalValido(campo,ini[campo]);
-        if(atual==null||inicial==null) return;
-        const d=+(atual-inicial).toFixed(1);
-        if(Math.abs(d)<0.05) return;
-        const bom=melhorMenor?d<0:d>0;
-        linhas.push(`<div>${label}: <strong style="color:${bom?'var(--g)':'var(--r)'}">${d>0?'+':''}${d.toFixed(1)}${sufixo}</strong></div>`);
-      }
-      linhaEvo(`${iconeCalifitInline('balance')} Peso`,'peso','kg',true);
-      linhaEvo(`${iconeCalifitInline('flame')} Gordura`,'gordura','pp',true);
-      linhaEvo(`${iconeCalifitInline('barbell')} Massa muscular esquelética`,'massaMuscular','kg',false);
-      append(`<div class="card"><div class="h3">Evolução (${biosComparaveis.length} medições)</div>
-        ${linhas.length?`<div style="font-size:var(--type-body);line-height:2.3">${linhas.join('')}</div>`:`<div class="info ig">Sem variação no período.</div>`}</div>`);
-    }
-  } else {
-    append(`<div class="empty"><div class="empty-i">${iconeCalifit('chart')}</div><div class="empty-t">Nenhuma medição ainda</div><p style="font-size:13px">Registre sua bioimpedância semanalmente.</p></div>`);
-  }
-
-  append(bioFormHtml);
-
-  if(ST.bio.length){
-    append(`<div class="card"><div class="h3">Últimas medições</div>${ST.bio.slice(0,8).map((x,i)=>`<div class="hr">
-      <div style="flex:1"><strong>${dataHoraBR(x.data)}</strong>${rotuloOrigemCorporal(x.origem)?` <span class="badge">${escHtml(rotuloOrigemCorporal(x.origem))}</span>`:''}<div style="font-size:var(--type-small);color:var(--sub)">${x.peso?`${x.peso}kg`:''}${x.gordura?` · gordura ${x.gordura}%`:''}${x.massaMuscular?` · massa muscular ${x.massaMuscular}kg`:''}</div></div>
-      <button class="btn btn-s btn-sm" data-bio-edit="${i}" style="margin:0">Editar</button>
-      <button class="btn btn-d btn-sm" data-bio-del="${i}" style="margin:0">Excluir</button>
-    </div>`).join('')}</div>`);
-  }
-
-  function atualizaPiInfo(){
-    const pi2=piIdeal(ST.perfil.altura,ST.perfil.genero);
-    const pw=ST.perfil.peso;
-    const el2=$('pi-info');
-    if(!el2) return;
-    if(pi2&&pw){
-      const tipo=+pw>=+pi2.min&&+pw<=+pi2.max?'ig':+pw<+pi2.min?'ib':'io';
-      el2.innerHTML=`<div class="info ${tipo}" style="margin-bottom:0">Faixa de referência por IMC adulto: <strong>${pi2.min}–${pi2.max}kg</strong> ${+pw>=+pi2.min&&+pw<=+pi2.max?'✅':+pw<+pi2.min?'— abaixo':'— acima'}<br><span style="font-size:12px">Esta faixa não considera individualmente massa muscular, retenção hídrica, cintura, exames ou avaliação profissional.</span></div>`;
-    } else {
-      el2.innerHTML=!validarAlturaCm(ST.perfil.altura).valido
-        ?'<div class="info io" style="margin-bottom:0">Informe uma altura válida para calcular IMC e faixas corporais.</div>'
-        :'<div class="info ib" style="margin-bottom:0">Peso atual não informado. Registre peso diário ou bioimpedância com peso para calcular indicadores corporais.</div>';
-    }
-  }
-
-  $('p-altura')?.addEventListener('change',e=>{
-    const r=validarAlturaCm(e.target.value);
-    if(!r.valido){showToast(r.mensagem);e.target.value=ST.perfil.altura||'';return;}
-  });
-  $('btn-salvar-metas')?.addEventListener('click',()=>{
-    const mp=$('meta-peso')?.value.trim();
-    const mg=$('meta-gordura')?.value.trim();
-    const pesoMeta=validarPesoKg(mp,{opcional:true});
-    const gorduraMeta=validarGorduraCorporal(mg,{opcional:true});
-    const invalido=[pesoMeta,gorduraMeta].find(r=>!r.valido);
-    if(invalido){showToast(invalido.mensagem);return;}
-    salvarMetasCorporais(pesoMeta.valor,gorduraMeta.valor);
-    salvar();rCorpo();showToast('Metas corporais atualizadas.');
-  });
-  $('btn-reg-peso')?.addEventListener('click',function(){
-    const alturaValidada=validarAlturaCm($('p-altura')?.value);
-    if(!alturaValidada.valido){showToast(alturaValidada.mensagem);$('p-altura')?.focus?.();return;}
-    const pesoValidado=validarPesoKg($('pd-peso')?.value);
-    if(!pesoValidado.valido){showToast(pesoValidado.mensagem);$('pd-peso')?.focus?.();return;}
-    const hoje=chaveDia();
-    const existente=arr(ST.pesoDiario).find(r=>chaveDia(r.data)===hoje);
-    if(existente&&!confirm('Já existe um peso registrado hoje. Salvar a correção de peso e altura?')) return;
-    ST.perfil.altura=alturaValidada.valor;
-    const res=registrarOuCorrigirPesoDiario({data:new Date().toISOString(),peso:pesoValidado.valor,origem:'pesoDiario'});
-    if(!res.valido){showToast(res.mensagem);return;}
-    salvar();
-    rCorpo();
-    showToast(res.corrigido?'Peso e altura atualizados.':'Peso e altura salvos.');
-  });
-  $('btn-reg-bio')?.addEventListener('click',function(){
-    const idsBio=['b-p','b-g','b-m','b-a','b-gv','b-t'];
-    const todosVazios=idsBio.every(id=>!String($(id)?.value??'').trim());
-    if(todosVazios){showToast('Preencha pelo menos um dado de bioimpedância ou peso para registrar.');return;}
-    const campos=[
-      validarPesoKg($('b-p')?.value,{opcional:true}),
-      validarGorduraCorporal($('b-g')?.value,{opcional:true}),
-      validarMassaMuscular($('b-m')?.value,{opcional:true}),
-      validarAguaCorporal($('b-a')?.value,{opcional:true}),
-      validarGorduraVisceral($('b-gv')?.value,{opcional:true}),
-      validarTmb($('b-t')?.value,{opcional:true})
-    ];
-    const invalido=campos.find(r=>!r.valido);
-    if(invalido){showToast(invalido.mensagem);return;}
-    const [pesoV,gorduraV,musculoV,aguaV,visceralV,tmbV]=campos;
-    const peso=pesoV.valor;
-    const entry={data:isoDataHoraLocal($('b-data')?.value,$('b-hora')?.value),peso,gordura:gorduraV.valor,massaMuscular:musculoV.valor,aguaCorp:aguaV.valor,gordVisceral:visceralV.valor,tmb:tmbV.valor,origem:bioEdit?.origem||'bioimpedancia'};
-    const concluir=(mensagem)=>{
-      if(peso) ST.perfil.peso=peso;
-      if(entry.gordura) ST.perfil.gordura=entry.gordura;
-      if(entry.massaMuscular) ST.perfil.massaMuscular=entry.massaMuscular;
-      delete ST.exec._bioEditData;
-      salvar();rCorpo();showToast(mensagem);
-    };
-    if(bioEdit){
-      const idx=ST.bio.indexOf(bioEdit);
-      if(idx>=0) ST.bio[idx]=entry;
-      concluir('Bioimpedância atualizada.');
-      return;
-    }
-    const existente=ST.bio.find(x=>chaveDia(x.data)===chaveDia(entry.data));
-    const adicionar=()=>{adicionarRegistroBio(entry);concluir(peso?'📊 Bioimpedância registrada!':'Bioimpedância registrada. Peso atual não alterado.');};
-    if(existente){
-      escolherDuplicidadeBio(
-        existente,
-        ()=>{atualizarRegistroBio(existente,entry);concluir('Bioimpedância atualizada.');},
-        adicionar
-      );
-    }else adicionar();
-  });
-  $('btn-cancelar-bio')?.addEventListener('click',()=>{delete ST.exec._bioEditData;salvar();rCorpo();});
-  el.querySelectorAll('[data-bio-edit]').forEach(btn=>btn.addEventListener('click',()=>{
-    const item=ST.bio[+btn.dataset.bioEdit];if(!item)return;
-    ST.exec._bioEditData=item.data;salvar();rCorpo();
-  }));
-  el.querySelectorAll('[data-bio-del]').forEach(btn=>btn.addEventListener('click',()=>{
-    const item=ST.bio[+btn.dataset.bioDel];if(!item)return;
-    showConfirm('Excluir bioimpedância?','Esta medição será removida do histórico.',()=>{
-      ST.bio=ST.bio.filter(x=>x!==item);
-      if(ST.exec._bioEditData===item.data) delete ST.exec._bioEditData;
-      salvar();rCorpo();showToast('Medição excluída.');
-    },'Excluir');
-  }));
-  atualizaPiInfo();
-}
 
 function bodyMetricCardHtml(nome,valor,status='',micro=''){
   if(valor==null||valor==='') return '';
@@ -13707,27 +13548,16 @@ function proximaAcaoAssistentePlano(sem,dia){
 }
 function htmlAtencaoAssistentePlano(alertas=[],recs=[],foco=[]){
   const dados=avaliarLembretesComDispensadosCalifit();
-  const prioridade={checkin:1,treinoHoje:2,fecharSemana:3,corpoBio:4};
-  const ativos=arr(dados.ativos).slice().sort((a,b)=>(prioridade[a.tipo]||9)-(prioridade[b.tipo]||9)).slice(0,3);
-  const extras=Math.max(0,arr(dados.ativos).length-ativos.length);
-  const iconeTipo=tipo=>({treinoHoje:'atividade',checkin:'checkin',fecharSemana:'fechar',corpoBio:'peso',backup:'backup'}[tipo]||'lembretes');
-  const itens=ativos.length?ativos.map(l=>`<div class="info ib" data-trainer-pendencia="${escHtml(l.tipo)}">
-    <div style="font-weight:var(--fw-extra);margin-bottom:3px">${iconeCalifitInline(iconeTipo(l.tipo))}${escHtml(l.titulo)}</div>
-    <div class="ms" style="margin-bottom:8px">${escHtml(l.texto)}</div>
-    <div class="trainer-actions">
-      <button class="btn btn-s btn-sm" type="button" data-trainer-lembrete-acao="${escHtml(l.tipo)}">${escHtml(l.acao)}</button>
-      <button class="btn btn-s btn-sm" type="button" data-trainer-lembrete-dismiss="${escHtml(l.tipo)}">Dispensar hoje</button>
-    </div>
-  </div>`).join(''):'<div class="info ig">Sem pendências agora.</div>';
-  const orientacoes=mensagensUnicasVisuais([...arr(alertas),...arr(recs),...arr(foco)]).slice(0,3);
-  return `<div class="card" id="trainer-atencao">
-    <div class="trainer-card-title"><div><div class="h3">${tituloIcone('alerta','O que merece atenção')}</div><div class="ms" style="margin-bottom:0">Prioridade: dor/segurança, check-in, treino, semana e corpo.</div></div></div>
-    <div class="trainer-section" id="trainer-pendencias"><div class="h3">${tituloIcone('lembretes','Pendências')}</div><div class="context-list">${itens}</div></div>
-    ${extras?`<div class="ms" style="margin-top:8px">+${extras} lembrete${extras===1?'':'s'}.</div>`:''}
-    <button class="btn btn-s" id="btn-central-lembretes-assistente" type="button" style="margin-top:8px">${iconeCalifit('lembretes')} Central de lembretes</button>
-    <div class="trainer-section"><div class="h3">${tituloIcone('alerta','Alertas e recomendações')}</div>
-      ${orientacoes.length?orientacoes.map((a,i)=>alertaAssistenteHtml(a,i)).join(''):'<div class="info ig">Nenhum alerta relevante no momento.</div>'}
-    </div>
+  const tiposRelevantes=new Set(['checkin','treinoHoje','fecharSemana','corpoBio']);
+  const totalPendencias=arr(dados.ativos).filter(l=>tiposRelevantes.has(l.tipo)).length;
+  const orientacoes=mensagensUnicasVisuais([...arr(alertas),...arr(recs),...arr(foco)])
+    .filter(txt=>/dor|seguran|recuper|cirurg|les[aã]o|interrompa|reduz|n[aã]o progred|t[eé]cnica ruim|esfor[cç]o alto/i.test(String(txt||'')))
+    .slice(0,2);
+  if(!totalPendencias&&!orientacoes.length) return '';
+  return `<div class="card trainer-attention-compact" id="trainer-atencao">
+    <div class="h3">${tituloIcone('alerta','Atenção')}</div>
+    ${orientacoes.length?`<div class="context-list">${orientacoes.map((a,i)=>alertaAssistenteHtml(a,i)).join('')}</div>`:''}
+    ${totalPendencias?`<div class="trainer-pending-summary"><span>${totalPendencias} pendência${totalPendencias===1?'':'s'} na Central de lembretes.</span><button class="btn btn-s btn-sm" id="btn-central-lembretes-assistente" type="button">Ver pendências</button></div>`:''}
   </div>`;
 }
 function htmlBaseAssistentePlano(ctreino={},ultCheck=null,alertas=[],recs=[]){
@@ -13770,13 +13600,9 @@ function rTreinador(){
   const treinosConcluidosSemana=Object.values(sem?.registros||{}).filter(r=>r?.tipo==='feito'&&r.treino).length;
   const proxAcao=proximaAcaoAssistentePlano(sem,dia);
   const resumo=document.createElement('div');resumo.className='card trainer-overview-hero';
-  resumo.innerHTML=`<div class="trainer-title">${tituloIcone('brain','Assistente do Plano')}</div>
-  <div class="ms">Orientação local baseada no seu plano e nos registros mais recentes.</div>
-  <div class="trainer-next-action"><span>Próxima ação</span><strong>${escHtml(proxAcao.texto)}</strong></div>
-  <div class="trainer-grid">
-    <div class="trainer-stat"><span>Status da semana</span><strong>${escHtml(statusSemanaTreinador)}</strong></div>
-    <div class="trainer-stat"><span>Treinos concluídos</span><strong>${treinosConcluidosSemana}</strong></div>
-  </div>
+  resumo.innerHTML=`<div class="trainer-title">${tituloIcone('brain','Assistente')}</div>
+  <div class="ms">Pergunte sobre seu treino, registros ou sobre como usar o app.</div>
+  ${proxAcao.tipo==='treinoHoje'?'<button class="btn btn-s btn-sm" id="btn-assistente-treino-hoje" type="button">Ver treino de hoje</button>':''}
   <details class="trainer-context-details"><summary>Contexto do plano</summary>
     <div class="hr"><span>Confiança dos dados</span><strong style="text-align:right">${escHtml(confiancaTreinador.texto||'Ainda faltam registros suficientes')}</strong></div>
     <div class="hr"><span>Objetivo atual</span><strong style="text-align:right">${escHtml(objetivoAtual)}</strong></div>
@@ -13788,18 +13614,18 @@ function rTreinador(){
   if(avisoPerfilAssist) el.insertAdjacentHTML('beforeend',avisoPerfilAssist);
 
   const ajudaUso=document.createElement('details');
-  ajudaUso.className='card assistant-help-center';
+  ajudaUso.className='card assistant-help-center assistant-help-primary';
+  ajudaUso.open=true;
   ajudaUso.id='assistant-help-center';
   ajudaUso.innerHTML=`<summary class="trainer-summary"><span class="trainer-summary-title">${tituloIcone('ajuda','Como usar o CaliFit Pro')}</span></summary>
     <div class="ms">Ajuda curta baseada somente nas funções que existem no app.</div>
     <div class="assistant-help-grid">
       <button type="button" data-help-topic="Como usar o app?">Primeiros passos</button>
       <button type="button" data-help-topic="Como registrar meu treino?">Treino e registros</button>
-      <button type="button" data-help-topic="Onde vejo meu histórico?">Semana e histórico</button>
-      <button type="button" data-help-topic="Como registrar bioimpedância?">Corpo</button>
-      <button type="button" data-help-topic="Como acessar a Biblioteca?">Biblioteca</button>
-      <button type="button" data-help-topic="Como abrir a Skill Tree?">Skill Tree</button>
-      <button type="button" data-help-topic="Como salvar meus dados?">Backup e restauração</button>
+      <button type="button" data-help-topic="Como fazer check-in?">Check-in e semana</button>
+      <button type="button" data-help-topic="Como alterar meu peso e altura?">Corpo e perfil</button>
+      <button type="button" data-help-topic="Como configurar atividades complementares?">Atividades complementares</button>
+      <button type="button" data-help-topic="Como acessar a Biblioteca?">Exercícios e progressões</button>
     </div>`;
   el.appendChild(ajudaUso);
 
@@ -13841,24 +13667,50 @@ function rTreinador(){
   const focoVisivel=mensagensUnicasVisuais(foco).slice(0,3);
   el.insertAdjacentHTML('beforeend',htmlAtencaoAssistentePlano(alertasVisiveis,recsVisiveis,focoVisivel));
 
+  // 167G.6: Assistente sem blocos redundantes; seis temas principais e perguntas extras recolhidas.
   // Chat
   const chatCard=document.createElement('div');chatCard.className='card trainer-chat-compact';
-  chatCard.innerHTML=`<div class="h3">${tituloIcone('chat','Pergunte ao Assistente')}</div><div class="ms">Orientação local baseada nos seus registros, plano e check-ins. Alterações só são aplicadas após sua confirmação.</div>`;
+  chatCard.innerHTML=`<div class="h3">${tituloIcone('chat','O que você quer saber?')}</div><div class="ms">Orientação local baseada nos seus registros, plano e check-ins.</div>`;
   const cb=document.createElement('div');cb.className='cb';
-  cb.innerHTML=`<input type="text" id="chat-in" placeholder="Ex: estou cansado, senti dor ou quero voltar a treinar..."><button class="btn btn-sm" id="btn-chat-send" style="margin-bottom:0">→</button>`;
+  cb.innerHTML=`<input type="text" id="chat-in" placeholder="O que você quer saber?"><button class="btn btn-sm" id="btn-chat-send" style="margin-bottom:0">→</button>`;
   chatCard.appendChild(cb);
-  const perguntasRapidas=[
+  const perguntasAdicionais=[
+    ['Como usar','Como usar o CaliFit Pro?'],
+    ['Alterar treino','Como alterar meu treino?'],
+    ['Registrar treino','Como registrar meu treino?'],
+    ['Fazer check-in','Como fazer check-in?'],
+    ['Peso e altura','Como alterar meu peso e altura?'],
+    ['Atividades complementares','Como configurar atividades complementares?'],
     ['Dor no exercício','Senti dor em um exercício'],
-    ['Treino perdido','Perdi o treino'],
+    ['Treino perdido','Como registrar um treino perdido?'],
     ['Exercício fácil','O exercício ficou fácil'],
     ['Exercício difícil','O exercício ficou muito difícil'],
     ['Voltar após pausa','Quero voltar a treinar depois de algumas semanas parado'],
     ['Como evoluir?','Como evoluir na calistenia?'],
-    ['Explicar meu plano','Explique meu plano']
+    ['Explicar meu plano','Explique meu plano'],
+    ['Adicionar exercício','Como adicionar exercícios?'],
+    ['Trocar exercício','Como trocar um exercício?'],
+    ['Alterar duração','Como alterar a duração do treino de hoje?'],
+    ['Atividade complementar','Como registrar uma atividade complementar?'],
+    ['Bioimpedância','Como registrar bioimpedância?'],
+    ['Histórico','Onde vejo meu histórico?'],
+    ['Lembretes','Como configurar lembretes?'],
+    ['Backup','Como salvar meus dados?'],
+    ['Biblioteca','Como acessar a Biblioteca?'],
+    ['Skill Tree','Como abrir a Skill Tree?'],
+    ['Equipamentos','Como alterar meus equipamentos?'],
+    ['Dias e objetivo','Como alterar meus dias e objetivo?'],
+    ['Saúde e limitações','Como alterar dores e limitações?'],
+    ['Dados pessoais','Como alterar meus dados pessoais?'],
+    ['Próxima semana','Como revisar a próxima semana?']
   ];
-  const qWrap=document.createElement('div');qWrap.className='quick-chip-grid';
-  perguntasRapidas.forEach(([label,msg])=>{const b=document.createElement('button');b.className='quick-chip';b.type='button';b.dataset.chatChip=label;b.dataset.chatMsg=msg;b.textContent=label;b.addEventListener('click',()=>sendChatMsg(msg));qWrap.appendChild(b);});
-  chatCard.appendChild(qWrap);
+  const criarChipPergunta=([label,msg])=>{const b=document.createElement('button');b.className='quick-chip';b.type='button';b.dataset.chatChip=label;b.dataset.chatMsg=msg;b.textContent=label;b.addEventListener('click',()=>sendChatMsg(msg));return b;};
+  const qMais=document.createElement('details');qMais.className='quick-chip-more';
+  qMais.innerHTML='<summary>Ver perguntas sugeridas</summary>';
+  const qMaisWrap=document.createElement('div');qMaisWrap.className='quick-chip-grid';
+  perguntasAdicionais.forEach(item=>qMaisWrap.appendChild(criarChipPergunta(item)));
+  qMais.appendChild(qMaisWrap);
+  chatCard.appendChild(qMais);
   const cm=document.createElement('div');cm.className='cm';cm.id='chat-msgs';
   const msgs=(ST.chat||[]).slice(-30);
   const ultimaUser=msgs.slice().reverse().find(m=>m.r==='user');
@@ -13882,7 +13734,9 @@ function rTreinador(){
   }
   const clearChat=document.createElement('button');clearChat.style.cssText='font-size:var(--type-small);color:var(--sub);background:none;border:none;cursor:pointer;font-family:inherit;margin-top:8px';clearChat.id='btn-limpar-chat';clearChat.textContent='Limpar conversa';
   chatCard.appendChild(clearChat);
-  el.appendChild(chatCard);
+  const atencaoCard=el.querySelector('#trainer-atencao');
+  el.insertBefore(chatCard,atencaoCard||null);
+  $('btn-assistente-treino-hoje')?.addEventListener('click',abrirHojeSemQuebrarRolagemCalifit);
   if(cend) setTimeout(()=>cend.scrollIntoView(),80);
   $('chat-in').addEventListener('keydown',e=>{if(e.key==='Enter') sendChat();});
   $('btn-chat-send').addEventListener('click',sendChat);
@@ -13891,8 +13745,7 @@ function rTreinador(){
   el.insertAdjacentHTML('beforeend',htmlBaseAssistentePlano(ctreino,ultCheck,alertasVisiveis,recsVisiveis));
 
   const quick=document.createElement('div');quick.className='card';
-  quick.innerHTML=`<div class="h3">${tituloIcone('sliders','Ajustes rápidos')}</div>
-  <div class="ms">Abra direto o ponto que deseja revisar. Nada aqui altera seu plano automaticamente.</div>
+  quick.innerHTML=`<div class="ms trainer-tools-intro">Abra diretamente o ponto que deseja revisar. Nada aqui altera seu plano automaticamente.</div>
   <div class="trainer-shortcut-grid">
     <button class="trainer-shortcut-btn" type="button" data-profile-shortcut="saude">Saúde e limitações<small>Dores, cirurgia, recuperação e restrições</small></button>
     <button class="trainer-shortcut-btn" type="button" data-profile-shortcut="objetivo">Objetivo e dias<small>Objetivo, nível, dias e tempo</small></button>
@@ -13901,8 +13754,7 @@ function rTreinador(){
     <button class="trainer-shortcut-btn" type="button" data-profile-shortcut="contexto">Capacidade e contexto<small>Histórico, marcas e preferências</small></button>
     <button class="trainer-shortcut-btn" type="button" data-open-body-tab="1">Atualizar corpo<small>Peso, bioimpedância e metas corporais</small></button>
   </div>
-  <div class="h3">${tituloIcone('sliders','Consultar e ajustar')}</div>
-  <div class="trainer-tool-grid">
+  <div class="trainer-tool-grid trainer-tool-grid-secondary">
     <button class="btn btn-s trainer-tool-btn" id="btn-biblioteca-exercicios" style="margin:0"><span class="trainer-tool-ico">${iconeCalifit('biblioteca')}</span><span>Biblioteca de exercícios</span></button>
     <button class="btn btn-s trainer-tool-btn" id="btn-skilltree-plano" style="margin:0"><span class="trainer-tool-ico">${iconeCalifit('skill')}</span><span>Skill Tree</span></button>
     <button class="btn trainer-tool-btn" id="btn-toggle-perfil" style="margin:0"><span class="trainer-tool-ico">${iconeCalifit('perfil')}</span><span>Abrir perfil completo</span></button>
@@ -17724,7 +17576,11 @@ function renderHistoricoTreinos(el){
     eventos.slice(0,60).forEach(e=>{
       const row=document.createElement('button');row.type='button';row.className='hist-o4-row';row.dataset.eventoId=e.id;
       const data=new Date(e.data);
-      row.innerHTML=`<div class="hist-o4-main"><div class="hist-o4-title">${escHtml(e.nome)}</div><div class="hist-o4-meta">${data.toLocaleDateString('pt-BR')} · ${DPT[e.diaIdx]||data.toLocaleDateString('pt-BR',{weekday:'short'})} · Semana ${escHtml(e.semanaNum||'—')} · ${e.categoria==='atividade'?'atividade complementar':'calistenia'}</div><div class="hist-o4-detail">${escHtml(e.detalhe||'Sem detalhes adicionais.')}${e.dorRegioes?.length?` · Dor: ${escHtml(e.dorRegioes.map(rotuloRegiaoDorCurto).join(', '))}`:''}</div></div><span class="hist-o4-badge ${e.status}">${escHtml(labelStatusHistorico163O4(e.status))}</span>`;
+      const avaliacaoProgressao=e.categoria==='calistenia'&&e.status==='concluido'&&e.registro?.tipo==='feito'
+        ?avaliacaoProgressaoRegistroCalifit(e.registro)
+        :null;
+      const progressaoTxt=avaliacaoProgressao?avaliacaoProgressao.curto:'';
+      row.innerHTML=`<div class="hist-o4-main"><div class="hist-o4-title">${escHtml(e.nome)}</div><div class="hist-o4-meta">${data.toLocaleDateString('pt-BR')} · ${DPT[e.diaIdx]||data.toLocaleDateString('pt-BR',{weekday:'short'})} · Semana ${escHtml(e.semanaNum||'—')} · ${e.categoria==='atividade'?'atividade complementar':'calistenia'}</div><div class="hist-o4-detail">${escHtml(e.detalhe||'Sem detalhes adicionais.')}${progressaoTxt?` · ${escHtml(progressaoTxt)}`:''}${e.dorRegioes?.length?` · Dor: ${escHtml(e.dorRegioes.map(rotuloRegiaoDorCurto).join(', '))}`:''}</div></div><span class="hist-o4-badge ${e.status}">${escHtml(labelStatusHistorico163O4(e.status))}</span>`;
       row.addEventListener('click',()=>abrirEventoHistorico163O4(e.id));lista.appendChild(row);
     });
     if(eventos.length>60) lista.insertAdjacentHTML('beforeend',`<div class="hist-o4-empty">Mostrando os 60 registros mais recentes de ${eventos.length}. Use os filtros para refinar.</div>`);
@@ -17755,19 +17611,32 @@ if(typeof window!=='undefined'&&window.__CALIFIT_TEST_HOOKS__){
 // 167E · tutorial contextual inteiramente local e baseado em capacidades reais.
 const BASE_TUTORIAL_CALIFIT=Object.freeze([
   {id:'biblioteca',existe:true,tela:'Hoje/Assistente',rx:/(biblioteca).*(onde|acess|abr|encontr)|(onde|como).*(biblioteca)/,titulo:'Para abrir a Biblioteca',passos:['Vá à aba Hoje ou Assistente.','Toque em Biblioteca de exercícios.','Use a busca ou os filtros para localizar o exercício.'],acoes:[['Abrir Biblioteca','biblioteca']]},
-  {id:'skill_tree',existe:true,tela:'Hoje/Assistente',rx:/(skill\s*tree).*(onde|acess|abr|us)|(onde|como).*(skill\s*tree)/,titulo:'Para abrir a Skill Tree',passos:['Vá à aba Hoje ou Assistente.','Toque em Skill Tree.','Escolha um filtro e abra uma trilha para ver a progressão.'],acoes:[['Abrir Skill Tree','skill_tree']]},
-  {id:'registrar_treino',existe:true,tela:'Hoje/Semana',rx:/(como|onde).*(registr).*(treino)|(registrar meu treino)/,titulo:'Para registrar um treino',passos:['Abra Hoje para o treino atual ou Semana para outro dia.','Abra o treino planejado.','Toque em Registrar treino.','Marque os exercícios e finalize o registro.'],acoes:[['Abrir treino de hoje','treino_hoje'],['Ir para Semana','semana']]},
+  {id:'skill_tree',existe:true,tela:'Hoje/Assistente',rx:/(skill\s*tree).*(onde|acess|abr|us)|(onde|como).*(skill\s*tree)/,titulo:'Para abrir a Skill Tree',passos:['Vá à aba Hoje ou Assistente.','Toque em Skill Tree.','Escolha uma trilha e abra uma progressão.'],acoes:[['Abrir Skill Tree','skill_tree']]},
+  {id:'registrar_treino',existe:true,tela:'Hoje/Semana',rx:/(como|onde).*(registr|salv).*(treino)|(registrar meu treino)|(como registrar treino)/,titulo:'Para registrar um treino',passos:['Abra Hoje para o treino atual ou Semana para outro dia.','Abra o treino planejado.','Use Feito como planejado, Fiz diferente ou Não fiz em cada exercício.','Complete o feedback mínimo e finalize o registro.'],acoes:[['Abrir treino de hoje','treino_hoje'],['Ir para Semana','semana']]},
+  {id:'checkin',existe:true,tela:'Semana',rx:/(^|\b)(como|onde|quero|preciso)?\s*(fazer|preencher|abrir|registrar|usar)?\s*(o )?(checkin|check in|feedback semanal)(\b|$)|(checkin|check in).*(semanal|semana|preencher|fazer|abrir|registrar)/,titulo:'Para fazer o check-in semanal',passos:['Abra a aba Semana.','Toque em Check-in semanal.','Responda sobre dor, recuperação, exercícios fáceis ou difíceis e preferência para a próxima semana.','Salve; se já existir um check-in, ele será atualizado sem duplicidade.'],nota:'O feedback mínimo no fim de cada treino é separado do check-in semanal: ele registra treino, dor e esforço daquela sessão.',acoes:[['Abrir check-in semanal','checkin'],['Abrir treino de hoje','treino_hoje']]},
   {id:'editar_treino',existe:true,tela:'Semana',rx:/(como|onde).*(edit|reabr).*(treino|registro)|(treino concluido).*(edit)/,titulo:'Para editar um treino concluído',passos:['Abra a aba Semana.','Toque no dia que possui o registro.','Escolha Editar registro ou Reabrir treino.','Atualize e salve sem criar outro registro.'],acoes:[['Ver registros','historico']]},
+  {id:'alterar_treino',existe:true,tela:'Hoje/Assistente',rx:/(como|onde|quero).*(alter|mudar|ajust).*(meu )?treino|(alterar treino)/,titulo:'Para alterar seu treino',passos:['Para trocar somente um exercício, abra Hoje e use Trocar exercício.','Para mudar apenas a duração de hoje, escolha o tempo na aba Hoje.','Para mudar dias, objetivo, nível, equipamentos ou atividades, abra Perfil e Plano no Assistente.','Para editar um treino já concluído, use a aba Semana.'],acoes:[['Abrir treino de hoje','treino_hoje'],['Objetivo e dias','objetivo'],['Abrir Semana','semana']]},
+  {id:'duracao_hoje',existe:true,tela:'Hoje',rx:/(como|onde|quero).*(alter|mudar|ajust|reduz).*(duracao|duração|tempo).*(treino|hoje)|(treino).*(10|20|30|45|60)\s*min/,titulo:'Para ajustar a duração de hoje',passos:['Abra a aba Hoje.','Em Quanto tempo você tem hoje?, escolha uma duração.','O ajuste vale somente para a sessão atual e não muda o restante da semana.'],acoes:[['Ajustar tempo de hoje','tempo_hoje']]},
   {id:'trocar_exercicio',existe:true,tela:'Hoje',rx:/(como|onde).*(troc|substitu).*(exercicio)|nao consigo fazer/,titulo:'Para trocar um exercício',passos:['Abra o treino na aba Hoje.','No card do exercício, toque em Trocar exercício.','Informe o motivo e escolha um substituto compatível.','Confirme a troca para o treino atual.'],acoes:[['Abrir treino de hoje','treino_hoje']]},
-  {id:'timer',existe:true,tela:'Hoje',rx:/(como|onde).*(timer|cronometro)|(usar o timer)/,titulo:'Para usar o timer',passos:['Abra o treino na aba Hoje.','Use o controle de tempo no exercício.','Pause, retome ou feche no painel fixo do topo.'],acoes:[['Abrir treino de hoje','treino_hoje']]},
-  {id:'backup_exportar',existe:true,tela:'Assistente',rx:/(como|onde|quero|posso).*(salv|backup|export)|salvar meus dados/,titulo:'Para proteger seus dados',passos:['Abra Assistente.','Expanda Configurações e manutenção.','Em Backup, toque em Exportar backup.','Guarde o arquivo em local seguro.'],nota:'O CaliFit salva automaticamente neste dispositivo. Use Exportar backup: o arquivo criado é sua cópia de segurança; Restaurar/importar recupera essa cópia. Limpar os dados ou desinstalar sem backup pode eliminar o histórico local.',acoes:[['Abrir backup','backup']]},
+  {id:'timer',existe:true,tela:'Hoje',rx:/(como|onde).*(timer|cronometro)|(usar o timer)/,titulo:'Para usar o timer',passos:['Abra o treino na aba Hoje.','Toque em Iniciar no exercício ou em Descansar.','Use Pausar, Continuar, Zerar ou Fechar na faixa inferior.'],acoes:[['Abrir treino de hoje','treino_hoje']]},
+  {id:'atividade_complementar',existe:true,tela:'Assistente/Hoje',rx:/(como|onde|quero|preciso).*(configur|cadastr|adicion|alter|mudar|registr|inform).*(atividade(s)? complementar(es)?|outras atividades|pilates|yoga|corrida|caminhada|natacao|ciclismo)|(atividade(s)? complementar(es)?|outras atividades).*(configur|cadastr|adicion|alter|mudar|registr)/,titulo:'Para configurar atividades complementares',passos:['Abra Assistente.','Expanda Ajustar e explorar.','Abra Outras atividades e escolha Pilates, corrida, musculação ou outra opção disponível.','Informe dias, duração, intensidade, regiões exigidas e prioridade; depois salve.','No dia planejado, abra Hoje para registrar a realização.'],acoes:[['Configurar atividades complementares','atividades'],['Abrir Hoje','hoje']]},
+  {id:'musculacao',existe:true,tela:'Assistente/Hoje',rx:/(como|onde|quero|preciso).*(adicion|registr|cadastr|configur|coloc|alter).*(musculacao|academia|treino de forca)|(musculacao|academia|treino de forca).*(adicion|registr|cadastr|configur|alter)/,titulo:'Para configurar musculação como atividade complementar',passos:['Abra Assistente.','Expanda Ajustar e explorar e abra Outras atividades.','Ative Musculação e informe dias, duração, intensidade, áreas afetadas e prioridade.','Salve o perfil; no dia planejado, registre a sessão pela aba Hoje.'],nota:'Musculação é tratada como uma atividade complementar para ajustar volume e recuperação da calistenia.',acoes:[['Configurar atividades complementares','atividades'],['Abrir Hoje','hoje']]},
+  {id:'peso_altura',existe:true,tela:'Corpo',rx:/(como|onde|quero).*((alter|mudar|atualiz|registr).*(peso|altura)|(peso|altura).*(alter|mudar|atualiz|registr))|(meu peso e altura)/,titulo:'Para alterar peso e altura',passos:['Abra a aba Corpo.','Expanda Registrar peso e altura.','Informe os valores atuais e salve.','O histórico anterior é preservado.'],acoes:[['Registrar peso e altura','peso']]},
+  {id:'bio',existe:true,tela:'Corpo',rx:/(como|onde|quero).*(bioimpedancia|bioimpedância)|(registrar bio)/,titulo:'Para registrar bioimpedância',passos:['Abra a aba Corpo.','Expanda Registrar bioimpedância.','Informe somente os valores disponíveis.','Salve para acompanhar a tendência.'],nota:'Esses dados organizam o acompanhamento e não formam diagnóstico.',acoes:[['Registrar bioimpedância','bio']]},
+  {id:'objetivo_dias',existe:true,tela:'Assistente',rx:/(como|onde|quero).*(alter|mudar|atualiz).*(objetivo|dias? de treino|frequencia|frequência|nivel|nível)|(mudar meus dias)/,titulo:'Para alterar objetivo, nível ou dias',passos:['Abra Assistente.','Expanda Ajustar e explorar.','Toque em Objetivo e dias.','Revise os campos e salve para atualizar os próximos treinos sem apagar registros concluídos.'],acoes:[['Objetivo e dias','objetivo']]},
+  {id:'equipamentos',existe:true,tela:'Assistente',rx:/(como|onde|quero).*(alter|mudar|adicion|remov|atualiz).*(equipamento|barra|elastico|elástico|halter|kettlebell|colete|cinto)/,titulo:'Para alterar equipamentos',passos:['Abra Assistente.','Expanda Ajustar e explorar.','Toque em Equipamentos.','Marque o que está disponível e informe cargas quando solicitado.','Salve para atualizar as prescrições futuras.'],acoes:[['Abrir equipamentos','equipamentos']]},
+  {id:'saude_limitacoes',existe:true,tela:'Assistente',rx:/(como|onde|quero).*(alter|mudar|registr|atualiz).*(dor|limitacao|limitação|cirurgia|lesao|lesão|recuperacao|recuperação)/,titulo:'Para atualizar saúde e limitações',passos:['Abra Assistente.','Expanda Ajustar e explorar.','Toque em Saúde e limitações.','Atualize dores, cirurgia, recuperação e exercícios a evitar.','Salve para recalcular os próximos treinos de forma conservadora.'],acoes:[['Saúde e limitações','saude']]},
+  {id:'lembretes',existe:true,tela:'Assistente',rx:/(como|onde|quero).*(configur|alter|ativ|desativ|abr).*(lembrete)/,titulo:'Para configurar lembretes',passos:['Abra Assistente.','Expanda Configurações e manutenção.','Abra a Central de lembretes ou Configurar lembretes.','Ative somente os tipos úteis e ajuste os horários.'],acoes:[['Abrir lembretes','lembretes']]},
   {id:'backup_importar',existe:true,tela:'Assistente',rx:/(restaur|import).*(backup|dados)|backup.*(restaur|import)/,titulo:'Para restaurar um backup',passos:['Abra Assistente.','Expanda Configurações e manutenção.','Toque em Importar backup e selecione o arquivo.','Revise a confirmação antes de substituir os dados locais.'],acoes:[['Abrir backup/importação','backup']]},
-  {id:'historico',existe:true,tela:'Semana',rx:/(onde|como).*(historico|registros)|(ver meus registros)/,titulo:'Para ver seus registros',passos:['Abra a aba Semana.','Veja Feitos, Planejados e Perdidos.','Role até Histórico de treinos ou Semanas anteriores.','Toque em um item para ver detalhes.'],acoes:[['Abrir Histórico','historico']]},
-  {id:'bio',existe:true,tela:'Corpo',rx:/(como|onde).*(bioimpedancia)|(registrar bio)/,titulo:'Para registrar bioimpedância',passos:['Abra a aba Corpo.','Expanda Registrar bioimpedância.','Informe somente os valores disponíveis.','Salve para acompanhar a tendência.'],nota:'Esses dados organizam o acompanhamento e não formam diagnóstico.',acoes:[['Registrar bioimpedância','bio']]},
-  {id:'peso_altura',existe:true,tela:'Corpo',rx:/(como|onde).*(peso|altura).*(registr|alter)/,titulo:'Para registrar peso e altura',passos:['Abra a aba Corpo.','Expanda Registrar peso e altura.','Informe os valores e salve.'],acoes:[['Registrar peso e altura','peso']]},
-  {id:'offline',existe:true,tela:'App',rx:/(instal|offline|sem internet)/,titulo:'Para usar offline',passos:['Abra o app com internet ao menos uma vez.','Instale o PWA pelo navegador quando a opção estiver disponível.','Depois, reabra normalmente sem internet.'],nota:'Os dados continuam locais neste dispositivo.',acoes:[]},
-  {id:'criar_exercicio',existe:false,tela:'Biblioteca',rx:/(cri|adicion).*(exercicio).*(novo|proprio|personaliz)|(exercicio novo)/,titulo:'Exercício personalizado indisponível',limite:'Hoje o CaliFit Pro não permite criar um exercício personalizado.',alternativas:'Você pode trocar o exercício do plano, escolher um substituto, registrar uma atividade complementar ou buscar uma opção semelhante na Biblioteca.',acoes:[['Abrir Biblioteca','biblioteca'],['Abrir treino de hoje','treino_hoje']]},
-  {id:'editar_exercicio_nativo',existe:false,tela:'Biblioteca',rx:/(renome|edit|exclu|apag).*(exercicio).*(biblioteca|nativo)|(excluir um exercicio)/,titulo:'Edição da Biblioteca indisponível',limite:'Hoje o CaliFit Pro não permite renomear, editar ou excluir exercícios nativos da Biblioteca.',alternativas:'Você pode trocar um exercício no treino atual ou buscar uma alternativa existente.',acoes:[['Abrir Biblioteca','biblioteca'],['Abrir treino de hoje','treino_hoje']]}
+  {id:'backup_exportar',existe:true,tela:'Assistente',rx:/(como|onde|quero|posso).*(salv|backup|export)|salvar meus dados/,titulo:'Para proteger seus dados',passos:['Abra Assistente.','Expanda Configurações e manutenção.','Em Backup, toque em Exportar backup.','Guarde o arquivo em local seguro.'],nota:'O CaliFit salva automaticamente neste dispositivo. O arquivo exportado é a cópia de segurança.',acoes:[['Abrir backup','backup']]},
+  {id:'historico',existe:true,tela:'Semana',rx:/(onde|como).*(historico|histórico|registros)|(ver meus registros)/,titulo:'Para ver seus registros',passos:['Abra a aba Semana.','Role até Histórico de treinos.','Use os filtros de período, tipo e status.','Toque em um item para ver detalhes.'],acoes:[['Abrir Histórico','historico']]},
+  {id:'offline',existe:true,tela:'App',rx:/(instal|offline|sem internet|privacidade|dados locais)/,titulo:'Para usar offline',passos:['Abra o app com internet ao menos uma vez.','Instale o PWA pelo navegador quando a opção estiver disponível.','Depois, reabra normalmente sem internet.'],nota:'Os dados permanecem locais neste dispositivo.',acoes:[]},
+  {id:'dados_pessoais',existe:true,tela:'Assistente',rx:/(como|onde|quero).*(alter|mudar|corrig|atualiz).*(nome|idade|genero|dados pessoais|perfil)|(onde fica meu perfil)/,titulo:'Para alterar dados pessoais',passos:['Abra Assistente.','Expanda Ajustar e explorar.','Abra Perfil completo e depois Dados pessoais.','Altere nome, idade, gênero, peso-base ou altura e salve.'],nota:'Para acompanhar peso ao longo do tempo, prefira Registrar peso e altura na aba Corpo.',acoes:[['Abrir dados pessoais','dados']]},
+  {id:'marcar_perdido',existe:true,tela:'Semana',rx:/(como|onde).*(marcar|registrar).*(treino perdido|treino nao feito|nao fiz o treino)|(perdi o treino).*(como|onde|registr)/,titulo:'Para marcar um treino como perdido',passos:['Abra a aba Semana.','Use Marcar perdidos ou abra o dia planejado.','Confirme o treino não realizado e informe o motivo quando solicitado.','O app não compensa automaticamente o volume perdido.'],acoes:[['Abrir Semana','semana']]},
+  {id:'proxima_semana',existe:true,tela:'Semana',rx:/(como|onde).*(criar|gerar|ver|revisar|aprovar|aplicar).*(proxima semana|nova semana)|(nova semana).*(como|onde|gerar|aplicar)/,titulo:'Para revisar a próxima semana',passos:['Abra a aba Semana.','Finalize ou feche a semana atual quando os registros estiverem completos.','Revise a prévia da próxima semana.','Aplique somente depois de conferir dias, volume e atividades complementares.'],acoes:[['Abrir Semana','semana']]},
+  {id:'perfil_completo',existe:true,tela:'Assistente',rx:/(como|onde).*(abrir|ver|editar|alterar).*(perfil completo|perfil e plano)|(ajustar meu perfil)/,titulo:'Para abrir Perfil e Plano',passos:['Abra Assistente.','Expanda Ajustar e explorar.','Toque em Abrir perfil completo.','Abra apenas a seção que deseja modificar e salve.'],acoes:[['Abrir perfil completo','perfil']]},
+  {id:'criar_exercicio',existe:false,tela:'Biblioteca',rx:/(como|onde|quero).*(adicion|cri|cadastr).*(exercicio|exercício)|(adicionar exercicios)|(adicionar exercício)|(exercicio novo|exercício novo)/,titulo:'Exercício personalizado indisponível',limite:'Hoje o CaliFit Pro não permite criar um exercício personalizado.',alternativas:'Você pode trocar o exercício do plano, escolher um substituto, registrar uma atividade complementar ou buscar uma opção semelhante na Biblioteca.',acoes:[['Abrir Biblioteca','biblioteca'],['Abrir treino de hoje','treino_hoje']]},
+  {id:'editar_exercicio_nativo',existe:false,tela:'Biblioteca',rx:/(renome|edit|exclu|apag).*(exercicio|exercício).*(biblioteca|nativo)|(excluir um exercicio)/,titulo:'Edição da Biblioteca indisponível',limite:'Hoje o CaliFit Pro não permite renomear, editar ou excluir exercícios nativos da Biblioteca.',alternativas:'Você pode trocar um exercício no treino atual ou buscar uma alternativa existente.',acoes:[['Abrir Biblioteca','biblioteca'],['Abrir treino de hoje','treino_hoje']]}
 ]);
 let _acoesTutorialCalifit=[];
 function textoTutorialCapacidadeCalifit(item){
@@ -17788,14 +17657,47 @@ function respostaContextualTelaCalifit(){
     corpo:'Aqui em Corpo:\n1. Registre peso e altura.\n2. Adicione bioimpedância quando tiver dados.\n3. Leia os indicadores como tendência, não diagnóstico.',
     biblioteca:'Aqui na Biblioteca:\n1. Use a busca ou os filtros.\n2. Toque em Ver para execução, erros, cuidados e progressões.\n3. A consulta não altera seu plano.',
     'skill tree':'Aqui na Skill Tree:\n1. Escolha o filtro.\n2. Abra uma trilha.\n3. Consulte evidências e próximos passos.\n4. A árvore não progride seu plano automaticamente.',
-    assistente:'Aqui no Assistente:\n1. Faça perguntas sobre treino ou uso do app.\n2. Use Como usar o CaliFit Pro para atalhos.\n3. Consulte o histórico da conversa.\n4. Abra ajustes, Biblioteca, Skill Tree ou backup quando precisar.'
+    assistente:'Aqui no Assistente:\n1. Use as perguntas rápidas ou escreva o que deseja alterar, registrar ou consultar.\n2. Abra Como usar o CaliFit Pro para o tutorial por assunto.\n3. Use Ajustar e explorar para perfil, plano, equipamentos e atividades complementares.\n4. Consulte o histórico da conversa e as opções de backup quando precisar.'
   };
   return mapa[tela]||'Abra uma das abas principais para receber ajuda contextual sobre aquela tela.';
 }
-function roteiroInicialCalifit(){return `Primeiros passos no CaliFit Pro:\n1. Hoje — veja o treino e registre a execução.\n2. Semana — acompanhe planejados, feitos, perdidos e check-in.\n3. Corpo — registre peso, altura e bioimpedância.\n4. Assistente — tire dúvidas e receba orientação contextual.\n5. Biblioteca e Skill Tree — consulte execução e progressões.\n6. Backup — exporte seus dados periodicamente.`;}
-function perguntaExercicioTutorialCalifit(msg){return /(como\s+(fazer|executar)|tecnica|erros?\s+(a\s+)?evitar|cuidados?).*(flex|agach|remada|prancha|barra|exercicio)|^(como fazer|como executar)\s+/.test(msg);}
+function roteiroInicialCalifit(){return `Primeiros passos no CaliFit Pro:
+1. Hoje — veja o treino, use o timer e registre a execução ou atividade do dia.
+2. Semana — acompanhe planejados, feitos e perdidos, faça o check-in e revise a próxima semana.
+3. Corpo — registre peso, altura e bioimpedância.
+4. Assistente — tire dúvidas e abra Perfil e Plano para alterar dados, objetivo, dias, equipamentos e limitações.
+5. Atividades complementares — configure musculação, Pilates, corrida e outras atividades em Ajustar e explorar.
+6. Biblioteca e Skill Tree — consulte execução, cuidados e progressões.
+7. Backup — exporte seus dados periodicamente.`;}
+function normalizarPerguntaTutorialCalifit(texto=''){
+  return normalizarLinguagemInformalAssistenteCalifit(texto).normalizado
+    .replace(/check\s*-?\s*in/g,'checkin')
+    .replace(/skill\s*-?\s*tree/g,'skill tree')
+    .replace(/atividades?\s+extras?/g,'atividades complementares')
+    .replace(/\s+/g,' ')
+    .trim();
+}
+function selecionarTutorialCalifit(msg=''){
+  const normalizado=normalizarPerguntaTutorialCalifit(msg);
+  const correspondencias=BASE_TUTORIAL_CALIFIT.filter(x=>x.rx.test(normalizado));
+  return correspondencias.find(x=>x.existe===false)
+    ||correspondencias.find(x=>x.id==='checkin')
+    ||correspondencias.find(x=>x.id==='marcar_perdido')
+    ||correspondencias.find(x=>x.id==='proxima_semana')
+    ||correspondencias.find(x=>x.id==='dados_pessoais')
+    ||correspondencias.find(x=>x.id==='atividade_complementar')
+    ||correspondencias.find(x=>x.id==='musculacao')
+    ||correspondencias.find(x=>x.id==='backup_importar')
+    ||correspondencias[0]
+    ||null;
+}
+function perguntaExercicioTutorialCalifit(msg){
+  const normalizado=normalizarPerguntaTutorialCalifit(msg);
+  if(/\b(checkin|feedback semanal|treino|peso|altura|bioimpedancia|musculacao|atividade complementar|outras atividades|backup|lembrete|app|perfil|semana|historico|biblioteca|skill tree)\b/.test(normalizado)) return false;
+  return /(como\s+(fazer|executar)|tecnica|erros?\s+(a\s+)?evitar|cuidados?).*(flex|agach|remada|prancha|barra|exercicio|dead bug|bird dog|hollow|ponte|rdl|swing|paralela|afundo|avanco|step)|^(como fazer|como executar)\s+/.test(normalizado);
+}
 async function resolverTutorialCalifit(texto=''){
-  const msg=normalizarLinguagemInformalAssistenteCalifit(texto).normalizado;
+  const msg=normalizarPerguntaTutorialCalifit(texto);
   _acoesTutorialCalifit=[];
   if(/^(o que (faco|faço) aqui|nao entendi (essa|esta) tela|estou perdido aqui)/.test(msg)){
     _acoesTutorialCalifit=[['Ações principais','assistente']];return respostaContextualTelaCalifit();
@@ -17803,6 +17705,8 @@ async function resolverTutorialCalifit(texto=''){
   if(/(como usar (o )?app|por onde (comeco|começo)|me (de|dê) um tutorial|ajuda inicial|primeiros passos)/.test(msg)){
     _acoesTutorialCalifit=[['Abrir treino de hoje','treino_hoje'],['Abrir Semana','semana'],['Abrir Corpo','corpo'],['Abrir Biblioteca','biblioteca'],['Abrir Skill Tree','skill_tree'],['Abrir backup','backup']];return roteiroInicialCalifit();
   }
+  const itemTutorial=selecionarTutorialCalifit(msg);
+  if(itemTutorial){_acoesTutorialCalifit=arr(itemTutorial.acoes);return textoTutorialCapacidadeCalifit(itemTutorial);}
   if(perguntaExercicioTutorialCalifit(msg)){
     try{await carregarModuloExplorarCalifit();}catch{}
     const termo=msg.replace(/^(como\s+(fazer|executar)|qual\s+a\s+tecnica\s+(da|do)|quais\s+erros\s+evitar\s+(na|no))\s+/,'').replace(/[?!.]/g,'').trim();
@@ -17816,18 +17720,40 @@ async function resolverTutorialCalifit(texto=''){
     _acoesTutorialCalifit=[['Abrir na Biblioteca','buscar_exercicio',encontrados[0].nomeTecnico||encontrados[0].nome]];
     return `${item?.nome||encontrados[0].nome}: ${arr(item?.passos)[0]||item?.descricao||'A orientação completa está disponível na Biblioteca.'}${item?.erroComum?` Evite: ${item.erroComum}`:''}\n\nVeja passos, cuidados e progressões completos na Biblioteca.`;
   }
-  const correspondencias=BASE_TUTORIAL_CALIFIT.filter(x=>x.rx.test(msg));
-  const item=correspondencias.find(x=>x.existe===false)||correspondencias.find(x=>x.id==='backup_importar')||correspondencias[0];
-  if(item){_acoesTutorialCalifit=arr(item.acoes);return textoTutorialCapacidadeCalifit(item);}
   const perguntaUso=/(como|onde|posso|quero|nao encontrei|não encontrei|ajuda)/.test(msg)&&!/(dor|progred|progressao|progressão|ajustar meu treino|cansad|dificil|difícil|facil|fácil)/.test(msg);
-  if(perguntaUso){_acoesTutorialCalifit=[['Ajuda inicial','ajuda'],['Abrir Biblioteca','biblioteca'],['Abrir Skill Tree','skill_tree']];return 'Não encontrei uma orientação confiável para essa pergunta dentro do CaliFit Pro. Reformule a pergunta ou consulte a ajuda inicial e as ações principais.';}
+  if(perguntaUso){_acoesTutorialCalifit=[['Ajuda inicial','ajuda'],['Abrir perfil e plano','perfil'],['Abrir Semana','semana']];return 'Ainda não reconheci essa pergunta como uma função específica do CaliFit Pro. Tente dizer o que deseja alterar ou registrar, por exemplo: peso, check-in, treino, atividade complementar, equipamento, histórico, lembrete ou backup.';}
   return '';
 }
 function respostaAjudaUsoCalifit(texto=''){
-  const msg=normalizarLinguagemInformalAssistenteCalifit(texto).normalizado;
-  const correspondencias=BASE_TUTORIAL_CALIFIT.filter(x=>x.rx.test(msg));
-  const item=correspondencias.find(x=>x.existe===false)||correspondencias.find(x=>x.id==='backup_importar')||correspondencias[0];
+  const item=selecionarTutorialCalifit(texto);
   return item?textoTutorialCapacidadeCalifit(item):'';
+}
+function abrirPerfilPlanoTutorialCalifit(foco=''){
+  goTab(3);
+  const tentar=(restantes=8)=>setTimeout(()=>{
+    const wrap=$('perfil-plano-wrap');
+    if(!wrap){if(restantes>0)tentar(restantes-1);return;}
+    const disclosure=wrap.closest('details.ui-disclosure');
+    if(disclosure) disclosure.open=true;
+    wrap.innerHTML='';
+    renderPerfilPlano(wrap,foco==='perfil'?'':foco);
+    requestAnimationFrame(()=>{
+      const alvo=foco&&foco!=='perfil'?wrap.querySelector('.pp-section.is-focused'):wrap.querySelector('#perfil-plano');
+      (alvo||wrap).scrollIntoView({behavior:'smooth',block:'start'});
+      const primeiro=(alvo||wrap).querySelector('input,select,textarea,button,summary');
+      primeiro?.focus?.({preventScroll:true});
+    });
+  },80);
+  tentar();
+}
+function abrirCheckinTutorialCalifit(){
+  goTab(1);
+  const tentar=(restantes=8)=>setTimeout(()=>{
+    const btn=$('btn-checkin-sem');
+    if(btn){btn.click();return;}
+    if(restantes>0){rSemana();tentar(restantes-1);}
+  },80);
+  tentar();
 }
 function executarAcaoTutorialCalifit(tipo,valor=''){
   if(tipo==='biblioteca'||tipo==='buscar_exercicio'){
@@ -17836,11 +17762,53 @@ function executarAcaoTutorialCalifit(tipo,valor=''){
     return;
   }
   if(tipo==='skill_tree'){abrirSkillTreeCalifit();return;}
-  if(tipo==='hoje'||tipo==='treino_hoje'){goTab(0);if(tipo==='treino_hoje')setTimeout(()=>$('btn-ver-treino')?.click(),100);return;}
-  if(tipo==='semana'||tipo==='historico'){goTab(1);if(tipo==='historico')setTimeout(()=>document.querySelector('#s1 .history-card,.hist-o4-wrap')?.scrollIntoView({block:'start'}),120);return;}
-  if(tipo==='corpo'||tipo==='peso'||tipo==='bio'){goTab(2);setTimeout(()=>{const rx=tipo==='bio'?/Registrar bioimpedância/:/Registrar peso e altura/;const s=[...document.querySelectorAll('#s2 details>summary')].find(x=>rx.test(x.textContent||''));if(s){s.parentElement.open=true;s.scrollIntoView({block:'start'});}},120);return;}
-  if(tipo==='backup'){goTab(3);setTimeout(()=>{const d=$('trainer-manutencao');if(d){d.open=true;d.scrollIntoView({block:'start'});}},120);return;}
-  if(tipo==='ajuda'||tipo==='assistente'){goTab(3);setTimeout(()=>{const d=$('assistant-help-center');if(d){d.open=true;d.scrollIntoView({block:'start'});}},120);}
+  if(tipo==='hoje'){abrirHojeSemQuebrarRolagemCalifit();return;}
+  if(tipo==='treino_hoje'){
+    abrirHojeSemQuebrarRolagemCalifit();
+    setTimeout(()=>{$('btn-acao-hoje-principal')?.click();},180);
+    return;
+  }
+  if(tipo==='tempo_hoje'){
+    abrirHojeSemQuebrarRolagemCalifit();
+    setTimeout(()=>{const card=$('tempo-disponivel-hoje-card');if(card){card.scrollIntoView({block:'center'});card.querySelector('button')?.focus?.({preventScroll:true});}},180);
+    return;
+  }
+  if(tipo==='checkin'){abrirCheckinTutorialCalifit();return;}
+  if(tipo==='semana'||tipo==='historico'){
+    goTab(1);
+    if(tipo==='historico')setTimeout(()=>document.querySelector('#s1 .history-card,.hist-o4-wrap')?.scrollIntoView({block:'start'}),180);
+    return;
+  }
+  if(tipo==='corpo'||tipo==='peso'||tipo==='bio'){
+    goTab(2);
+    setTimeout(()=>{const rx=tipo==='bio'?/Registrar bioimpedância/:tipo==='peso'?/Registrar peso e altura/:null;const s=rx?[...document.querySelectorAll('#s2 details>summary')].find(x=>rx.test(x.textContent||'')):null;if(s){s.parentElement.open=true;s.scrollIntoView({block:'center'});}},140);
+    return;
+  }
+  if(['dados','saude','objetivo','equipamentos','atividades','contexto','perfil'].includes(tipo)){
+    abrirPerfilPlanoTutorialCalifit(tipo);
+    return;
+  }
+  if(tipo==='lembretes'){
+    goTab(3);
+    setTimeout(()=>abrirCentralLembretesCalifit(),140);
+    return;
+  }
+  if(tipo==='backup'){
+    goTab(3);
+    setTimeout(()=>{const d=$('trainer-manutencao');if(d){d.open=true;d.scrollIntoView({block:'center'});}},140);
+    return;
+  }
+  if(tipo==='ajuda'||tipo==='assistente'){
+    goTab(3);
+    setTimeout(()=>{const d=$('assistant-help-center');if(d){d.open=true;d.scrollIntoView({block:'center'});}},140);
+  }
+}
+if(typeof window!=='undefined'&&window.__CALIFIT_TEST_HOOKS__){
+  Object.assign(window.__CALIFIT_TEST_HOOKS__,{
+    normalizarPerguntaTutorialCalifit,
+    selecionarTutorialCalifit,
+    perguntaExercicioTutorialCalifit
+  });
 }
 function renderAcoesTutorialCalifit(){
   const box=$('chat-last-answer');if(!box||!_acoesTutorialCalifit.length)return;
@@ -17849,12 +17817,12 @@ function renderAcoesTutorialCalifit(){
   box.appendChild(wrap);
 }
 function atualizarTopOffsetCalifit(){
-  const raiz=document.documentElement,tf=$('tf'),hdr=$('hdr'),nav=$('nav');
-  const timer=tf?.classList.contains('on')?Math.ceil(tf.getBoundingClientRect().height):0;
+  const raiz=document.documentElement,hdr=$('hdr'),nav=$('nav');
   const cabecalho=Math.ceil((hdr?.getBoundingClientRect().height||0)+(nav?.getBoundingClientRect().height||0));
-  raiz.style.setProperty('--califit-timer-offset',`${timer}px`);
-  raiz.style.setProperty('--califit-top-offset',`${timer+cabecalho}px`);
-  document.body.classList.toggle('califit-timer-open',timer>0);
+  // O cronômetro atual é uma faixa inferior flutuante: não desloca o app nem o cabeçalho.
+  raiz.style.setProperty('--califit-timer-offset','0px');
+  raiz.style.setProperty('--califit-top-offset',`${cabecalho}px`);
+  document.body.classList.remove('califit-timer-open');
 }
 function limparConversaAssistenteCalifit(){
   showConfirm('Limpar conversa','Isso apaga somente o histórico do Assistente neste dispositivo. Plano, check-ins e dados corporais serão preservados.',()=>{

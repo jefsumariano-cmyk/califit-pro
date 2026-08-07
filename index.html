@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#111111" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0b0d0b" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
 <title>CaliFit Pro</title>
 <style id="califit-critical-css">
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -621,7 +622,7 @@ html:not([data-califit-css="ready"]) #toast{
 </div>
 
 <!-- TIMER FIXO -->
-<div id="tf">
+<div id="tf" aria-hidden="true" inert>
   <div>
     <div style="font-size:var(--type-caption);color:#aaa">Cronômetro</div>
     <div id="tf-v">0:00</div>
